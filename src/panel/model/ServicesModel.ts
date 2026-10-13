@@ -106,7 +106,8 @@ export class ServicesModel {
       }),
       client.onEvent((event) => {
         if (event.type === 'service:created' || event.type === 'service:disposed') this.record(event.type, event.payload as ServiceEvent | undefined);
-        if (RELOAD_EVENTS.has(event.type) && this.visible()) this.schedule();
+        if (!this.visible()) return;
+        if (RELOAD_EVENTS.has(event.type) || (event.type === 'reactivity:flush' && this.state.expanded !== null)) this.schedule();
       }),
     );
   }
