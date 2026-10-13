@@ -6,6 +6,7 @@ import { ICONS } from './icons';
 import type { DockPosition } from '../bridge/protocol';
 import { DevtoolsModel, type Section } from './model/DevtoolsModel';
 import { ElementsPage } from './pages/ElementsPage';
+import { HomePage } from './pages/HomePage';
 import { ReactivityPage } from './pages/ReactivityPage';
 import { LogsPage } from './pages/LogsPage';
 import { RouterPage } from './pages/RouterPage';
@@ -13,6 +14,7 @@ import { StoresPage } from './pages/StoresPage';
 import { ServicesPage } from './pages/ServicesPage';
 
 export const SECTIONS: { id: Section; label: string; icon: string }[] = [
+  { id: 'home', label: 'Home', icon: ICONS.home },
   { id: 'elements', label: 'Elements', icon: ICONS.elements },
   { id: 'reactivity', label: 'Reactivity', icon: ICONS.reactivity },
   { id: 'router', label: 'Router', icon: ICONS.router },
@@ -134,7 +136,8 @@ export class Shell extends Component<HTMLDivElement> {
             </div>
           </div>
           <div class="dt-page">
-            <div class="dt-empty" x-display={() => !m.state.status.connected}>
+            <HomePage x-wait={() => m.state.section !== 'home'} />
+            <div class="dt-empty" x-display={() => !m.state.status.connected && m.state.section !== 'home'}>
               <b>{() => statusText(m.state.status)}</b>
               <p>
                 Call <code>app.useDevelopment(true)</code> in the inspected app. The panel connects as soon as the

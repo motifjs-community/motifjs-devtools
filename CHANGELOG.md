@@ -11,6 +11,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Page bridge for devtools contract version 1, with JSON transfer of every value.
 - `mount()`: in-page panel docked to the bottom or the right, or in a separate window.
 - Panel shell with light and dark themes, connection status and header counters.
+- Home: versions of DevTools, MotifJS and the contract, a summary of the app that opens each screen, and community links.
 - Elements: component tree, inspector, prop values opened one level at a time, class and visibility writes.
 - Select a component in the page and highlight components from the tree.
 - Reactivity: run and flush counters, flush timeline with triggers and effects, links from effects to Elements.

@@ -14,6 +14,7 @@ export type BridgeStatus = {
   version: number | null;
   reason?: 'missing' | 'unsupported-version';
   host?: string;
+  coreVersion?: string;
 };
 
 export type BridgeHello = { channel: typeof CHANNEL; kind: 'hello' };

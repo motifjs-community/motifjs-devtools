@@ -108,7 +108,7 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
       api = next;
       if (api !== null) off = api.on((event) => send({ channel: CHANNEL, kind: 'event', event: transferEvent(event) }));
     }
-    if (api !== null) sendStatus({ connected: true, version: api.version });
+    if (api !== null) sendStatus(typeof api.coreVersion === 'string' ? { connected: true, version: api.version, coreVersion: api.coreVersion } : { connected: true, version: api.version });
     else if (candidate !== null) sendStatus({ connected: false, version: typeof candidate.version === 'number' ? candidate.version : null, reason: 'unsupported-version' });
     else sendStatus({ connected: false, version: null, reason: 'missing' });
   };

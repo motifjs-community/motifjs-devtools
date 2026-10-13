@@ -73,6 +73,7 @@ describe('bridge', () => {
     runApp();
     vi.advanceTimersByTime(20);
     expect(messages.at(-1)).toMatchObject({ channel: CHANNEL, kind: 'status', connected: true, version: 1 });
+    expect((messages.at(-1) as { coreVersion?: string }).coreVersion).toMatch(/^\d+\.\d+\.\d+/);
     expect(messages.filter((m) => m.kind === 'status')).toHaveLength(2);
   });
 
