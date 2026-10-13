@@ -33,6 +33,12 @@
   a time; a string, number or boolean value can be edited in place. The list can be filtered by type and follows the app as stores are created and components go away;
   a store no longer kept by a component or service is set aside under "Show released" until the browser collects
   it. Flush triggers in Reactivity name the store and field that changed.
+- **Services.** Every service the app registered with its lifetime and state: active, active in how many
+  scopes, or not requested yet. The scope tree shows the root, one scope per navigation and scopes opened with
+  `createScope`; the current navigation's scope is selected first, and a previous one kept by a `keepAlive` page
+  says how many pages keep it. A scope lists the services created in it and the registered ones it has not
+  created; a created service opens to its fields one level at a time. Created and disposed instances are listed
+  live under Activity.
 
 Light and dark themes follow the system, or are chosen in the header.
 

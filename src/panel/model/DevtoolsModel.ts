@@ -2,7 +2,7 @@ import { reactive } from '@motifx/core';
 import type { DockPosition } from '../../bridge/protocol';
 import type { Client, ClientStatus } from '../../client/client';
 
-export type Section = 'elements' | 'reactivity' | 'router' | 'stores' | 'logs';
+export type Section = 'elements' | 'reactivity' | 'router' | 'stores' | 'services' | 'logs';
 export type ThemeChoice = 'system' | 'light' | 'dark';
 
 export type Counters = {

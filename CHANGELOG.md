@@ -19,3 +19,4 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Stores: stores named after the field that keeps them, holders, last change, values opened one level at a time and edited in place, type filter, live updates and released stores set aside.
 - Elements: the component's own fields in the inspector.
 - Reactivity: triggers name the store and field that changed.
+- Services: registered services with lifetime and state, the scope tree with the current scope selected, services of a scope opened one level at a time, and live activity of created and disposed instances.

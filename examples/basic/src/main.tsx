@@ -29,8 +29,18 @@ function UserMenu() {
   return <button type="button">Signed in</button>;
 }
 
+class CartService {
+  items = [{ name: 'Tea', qty: 2 }];
+  total = 24;
+}
+
+class ApiClient {
+  baseUrl = '/api';
+}
+
 class Dashboard extends Component<HTMLElement> {
   static override elementTag = 'section';
+  cart = FromService(CartService)!;
 
   addOrder() {
     const id = store.orders.length + 1042;
@@ -130,7 +140,7 @@ const routes: RouteItem[] = [
     control: AppShell,
     childs: [
       { path: '/', redirect: '/dashboard' },
-      { path: '/dashboard', control: Dashboard },
+      { path: '/dashboard', control: Dashboard, keepAlive: true },
       { path: '/orders/{id}', control: OrderPage },
       {
         path: '/settings',
@@ -152,6 +162,8 @@ const routes: RouteItem[] = [
 
 const builder = Application.CreateBuilder();
 builder.services.addSingleton(ThemeService, ThemeService);
+builder.services.addSingleton(ApiClient, ApiClient);
+builder.services.addScoped(CartService, CartService);
 const app = builder.build();
 app.useDevelopment(true);
 app.useRouter({ routes, mode: 'hash' });

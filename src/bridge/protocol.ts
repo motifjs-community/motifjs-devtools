@@ -31,6 +31,7 @@ export const READ_METHODS = [
   'getTree',
   'inspect',
   'getServices',
+  'getScopes',
   'getCounters',
   'getWarnings',
   'getErrors',
@@ -42,6 +43,7 @@ export const READ_METHODS = [
   'readExtension',
   'readValue',
   'readStore',
+  'readService',
 ] as const;
 
 export const WRITE_METHODS = [
