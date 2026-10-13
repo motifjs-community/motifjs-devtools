@@ -1,17 +1,8 @@
 import { Component, FromService } from '@motifx/core';
-import { formatClock, formatMs, formatValue } from '../format';
+import { formatClock, formatMs } from '../format';
 import { ICONS } from '../icons';
 import { OUTCOMES, RouterModel, type Navigation, type OutcomeFilter } from '../model/RouterModel';
-
-type Param = { key: string; text: string; kind: string };
-
-const paramsOf = (params: unknown): Param[] => {
-  if (params === null || typeof params !== 'object' || Array.isArray(params)) return [];
-  return Object.entries(params as Record<string, unknown>).map(([key, value]) => {
-    const formatted = formatValue(value);
-    return { key, text: formatted.text, kind: formatted.kind };
-  });
-};
+import { ValueList } from '../ValueList';
 
 const targetOf = (nav: Navigation) => nav.uri ?? nav.requested;
 const rewritten = (nav: Navigation) => nav.uri !== null && nav.uri !== nav.requested;
@@ -19,24 +10,6 @@ const routeText = (model: RouterModel) => model.state.route?.uri ?? '–';
 const chainText = (model: RouterModel) => (model.state.route?.chain ?? []).join(' › ');
 const stateText = (model: RouterModel) => (model.state.navigating === null ? 'Runtime connected' : `Navigating to ${model.state.navigating}`);
 const numberOf = (model: RouterModel, nav: Navigation) => String(model.state.navigations.findIndex((n) => n.key === nav.key) + 1).padStart(2, '0');
-
-function Params(props: { params: () => unknown }) {
-  return (
-    <span class="dt-params">
-      <span class="dt-muted" x-display={() => paramsOf(props.params()).length === 0}>
-        No params
-      </span>
-      {() =>
-        paramsOf(props.params()).map((param) => (
-          <span class="dt-param" key={param.key}>
-            <b>{param.key}</b>
-            <code class={`dt-value ${param.kind}`}>{param.text}</code>
-          </span>
-        ))
-      }
-    </span>
-  );
-}
 
 function NavigationEntry(props: { nav: Navigation; model: RouterModel }) {
   const { nav, model } = props;
@@ -67,7 +40,7 @@ function NavigationEntry(props: { nav: Navigation; model: RouterModel }) {
         <dd x-display={() => nav.reason !== undefined}>{nav.reason ?? ''}</dd>
         <dt>Params</dt>
         <dd>
-          <Params params={() => nav.params} />
+          <ValueList value={() => nav.params} empty="No params" />
         </dd>
       </dl>
     </div>
@@ -113,7 +86,7 @@ export class RouterPage extends Component<HTMLElement> {
               {() => chainText(m)}
             </span>
             <span class="dt-route-params" x-display={() => m.state.route !== null}>
-              <Params params={() => m.state.route?.params} />
+              <ValueList value={() => m.state.route?.params} empty="No params" />
             </span>
           </div>
           <span class={() => (m.state.navigating === null ? 'dt-route-state' : 'dt-route-state busy')}>{() => stateText(m)}</span>
