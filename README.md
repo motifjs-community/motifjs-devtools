@@ -21,7 +21,10 @@
 - **Router.** The current route with its params and the paths along its chain, and the last 50 navigations
   the app recorded since devtools was enabled: the address shown, the address requested when a redirect or
   middleware changed it, the outcome (`done`, `skipped`, `cancelled`, `notFound`, `error`), the duration, the
-  time and the cancel reason. The list can be filtered by outcome.
+  time and the cancel reason. The list can be filtered by outcome. The Routes tab shows the route configuration
+  given to `app.useRouter()` as a tree: each route with its full path, name, component, redirect, aliases,
+  `keepAlive`, hooks (`validate`, `onEntering`, `onEnter`, `onLeave`, `onUpdate`, `onShow`) and `meta`; the
+  chain of the current route is marked.
 - **Header counters.** Components in the tree, live effects and the duration of the last reactivity flush.
 - **Logs.** Warnings and errors the app reported since devtools was enabled, most recently seen first. The same
   warning or error is shown once with how many times it came and when it was first and last seen; a warning

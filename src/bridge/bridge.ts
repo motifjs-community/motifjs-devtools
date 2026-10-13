@@ -35,11 +35,25 @@ export interface Bridge {
 
 const METHODS = new Set<string>([...READ_METHODS, ...WRITE_METHODS]);
 const OWN_METHODS = new Set<string>(PAGE_METHODS);
-const DEPTH: Record<string, number> = { getTree: Infinity, getRoutes: 8, inspect: 6, readExtension: 6, getWarnings: 6, getErrors: 8, getScopes: 6, readValue: 6, readStore: 6, readService: 6 };
+const DEPTH: Record<string, number> = { getTree: Infinity, inspect: 6, readExtension: 6, getWarnings: 6, getErrors: 8, getScopes: 6, readValue: 6, readStore: 6, readService: 6 };
 
 type StoreRecord = { id: unknown; name: unknown; file?: unknown; type: unknown; value: unknown; stale?: unknown; released?: unknown; holders: unknown };
 
+const routeShape = (value: unknown): unknown =>
+  Array.isArray(value)
+    ? value.map((route) => {
+        if (typeof route !== 'object' || route === null) return toTransfer(route, 1);
+        const out: Record<string, unknown> = {};
+        for (const [key, item] of Object.entries(route)) {
+          if (item === undefined) continue;
+          out[key] = key === 'childs' ? routeShape(item) : toTransfer(item, 3);
+        }
+        return out;
+      })
+    : toTransfer(value, 3);
+
 const SHAPES: Record<string, (value: unknown) => unknown> = {
+  getRoutes: routeShape,
   getStores: (value) =>
     Array.isArray(value)
       ? value.map((store: StoreRecord) => {

@@ -113,6 +113,24 @@ describe('bridge', () => {
     expect('released' in store).toBe(false);
   });
 
+  it('sends the whole route tree however deep it is', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    app = Application.CreateBuilder().build();
+    app.useDevelopment(true);
+    const leaf = () => new Component('section');
+    app.useRouter({
+      mode: 'hash',
+      routes: [{ path: '/', control: leaf, childs: [{ path: 'a', control: leaf, childs: [{ path: 'b', control: leaf, childs: [{ path: 'c', control: leaf, meta: { deep: { level: 4 } } }] }] }] }],
+    });
+    app.run('#app');
+    start();
+    const response = (await call('getRoutes')) as { value: { childs: { childs: { childs: { path: string; control: unknown; meta: unknown }[] }[] }[] }[] };
+    const c = response.value[0].childs[0].childs[0].childs[0];
+    expect(c.path).toBe('c');
+    expect(c.control).toEqual({ $motif: 'function', name: 'leaf' });
+    expect(c.meta).toEqual({ deep: { level: 4 } });
+  });
+
   it('passes the name and file of a module store', async () => {
     const cart = reactive({ items: [] as string[] });
     nameModuleStore(cart, 'cart', 'src/stores/cart.ts');
