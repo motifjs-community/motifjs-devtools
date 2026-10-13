@@ -114,6 +114,38 @@ describe('bridge', () => {
     expect('released' in store).toBe(false);
   });
 
+  it('sends every child of a component however many there are', async () => {
+    class LongList extends Component<HTMLUListElement> {
+      static override elementTag = 'ul';
+      rows = reactive({ list: Array.from({ length: 150 }, (_, i) => i) });
+      override view() {
+        return (
+          <>
+            {this.rows.list.map((n) => (
+              <li key={n}>{String(n)}</li>
+            ))}
+          </>
+        );
+      }
+    }
+    document.body.innerHTML = '<div id="app"></div>';
+    app = Application.CreateBuilder().build();
+    app.useDevelopment(true);
+    app.run('#app', new LongList());
+    start();
+    type Node = { path: number[]; childCount: number; children?: Node[] };
+    const tree = ((await call('getTree')) as { value: Node }).value;
+    const nodes: Node[] = [];
+    const walk = (node: Node) => {
+      nodes.push(node);
+      node.children?.forEach(walk);
+    };
+    walk(tree);
+    const items = nodes.find((n) => n.childCount === 150)!;
+    expect(items.children).toHaveLength(150);
+    expect(nodes.every((n) => Array.isArray(n.path))).toBe(true);
+  });
+
   it('sends the whole route tree however deep it is', async () => {
     document.body.innerHTML = '<div id="app"></div>';
     app = Application.CreateBuilder().build();
