@@ -23,7 +23,11 @@
   middleware changed it, the outcome (`done`, `skipped`, `cancelled`, `notFound`, `error`), the duration, the
   time and the cancel reason. The list can be filtered by outcome.
 - **Header counters.** Components in the tree, live effects and the duration of the last reactivity flush.
-- **Stores, Logs.** The sections are in the menu; their screens are not built yet.
+- **Logs.** Warnings and errors the app reported since devtools was enabled, most recently seen first. The same
+  warning or error is shown once with how many times it came and when it was first and last seen; a warning
+  opens to its details, an error to its name, cause and stack. The list can be filtered by level, and the menu
+  shows how many there are.
+- **Stores.** The section is in the menu; its screen is not built yet.
 
 Light and dark themes follow the system, or are chosen in the header.
 

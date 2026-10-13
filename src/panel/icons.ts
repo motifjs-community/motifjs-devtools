@@ -18,5 +18,6 @@ export const ICONS = {
   bolt: svg('<path d="M9 1.5 3.5 9H8l-1 5.5L12.5 7H8z"/>'),
   refresh: svg('<path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2.5v3h-3"/>'),
   filter: svg('<path d="M2 3h12l-4.5 5.5V13l-3-1.5v-3z"/>'),
+  warning: svg('<path d="M8 2 14.5 13.5h-13z"/><path d="M8 6.5v3"/><path d="M8 11.6v.1"/>'),
   chevron: svg('<path d="m6 3.5 4.5 4.5L6 12.5"/>'),
 } as const;

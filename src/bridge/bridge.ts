@@ -35,7 +35,7 @@ export interface Bridge {
 
 const METHODS = new Set<string>([...READ_METHODS, ...WRITE_METHODS]);
 const OWN_METHODS = new Set<string>(PAGE_METHODS);
-const DEPTH: Record<string, number> = { getTree: Infinity, getRoutes: 8, inspect: 6, readExtension: 6 };
+const DEPTH: Record<string, number> = { getTree: Infinity, getRoutes: 8, inspect: 6, readExtension: 6, getWarnings: 6, getErrors: 8 };
 
 export function createBridge({ send, host = globalThis, interval = 250, picker: withPicker = typeof document !== 'undefined' }: BridgeOptions): Bridge {
   let api: Contract | null = null;

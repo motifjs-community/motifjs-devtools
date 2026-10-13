@@ -1,0 +1,115 @@
+.dt-log-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 1fr minmax(0, 2fr) 16px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 46px;
+  padding: 6px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--dt-border);
+  background: transparent;
+  color: var(--dt-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dt-log-row:hover {
+  background: var(--dt-bg-hover);
+}
+
+.dt-log-entry.open .dt-log-row {
+  background: var(--dt-bg-active);
+}
+
+.dt-log-entry.open .dt-chevron {
+  transform: rotate(90deg);
+}
+
+.dt-log-title {
+  overflow: hidden;
+  color: var(--dt-text-strong);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dt-log-message {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dt-level {
+  font-size: 11px;
+}
+
+.dt-level.warning {
+  color: var(--dt-warn);
+}
+
+.dt-level.error {
+  color: var(--dt-danger);
+}
+
+.dt-log-card .dt-route-icon {
+  background: color-mix(in srgb, var(--dt-warn) 14%, transparent);
+  color: var(--dt-warn);
+}
+
+.dt-log-split {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.dt-log-detail {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 0;
+  padding: 10px 14px 12px 66px;
+  border-bottom: 1px solid var(--dt-border);
+  background: var(--dt-bg);
+}
+
+.dt-log-detail dt {
+  color: var(--dt-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 20px;
+  text-transform: uppercase;
+}
+
+.dt-log-detail dd {
+  margin: 0;
+  line-height: 20px;
+}
+
+.dt-stack {
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 240px;
+  overflow: auto;
+  border: 1px solid var(--dt-border);
+  border-radius: 5px;
+  background: var(--dt-bg-raised);
+  font: 11px/1.5 var(--dt-mono);
+  white-space: pre;
+}
+
+@media (max-width: 640px) {
+  .dt-log-row {
+    grid-template-columns: 28px minmax(0, 1fr) auto 16px;
+  }
+
+  .dt-log-message {
+    display: none;
+  }
+
+  .dt-log-detail {
+    padding-left: 14px;
+  }
+}

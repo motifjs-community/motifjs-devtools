@@ -42,6 +42,7 @@ class Dashboard extends Component<HTMLElement> {
   override view() {
     return (
       <>
+      
         <div class="stats">
           {store.stats.map((stat) => (
             <StatCard key={stat.id} stat={stat} />
@@ -91,6 +92,8 @@ function AppShell() {
           <a rel="router" href="/settings">Settings</a>
           <a rel="router" href="/login">Login</a>
           <a rel="router" href="/missing">Missing</a>
+          <a rel="router" href="/broken">Broken</a>
+          <a rel="router" href="/loop">Loop</a>
         </nav>
         <button type="button" onclick={() => (store.signedIn = !store.signedIn)}>Toggle sign-in</button>
         <UserMenu x-wait={() => !store.signedIn} />
@@ -116,6 +119,14 @@ const routes: RouteItem[] = [
         onLeave: () => (store.unsaved ? { cancel: true, reason: 'unsaved changes' } : undefined),
       },
       { path: '/login', redirect: '/dashboard' },
+      {
+        path: '/broken',
+        control: () => {
+          throw new Error('The orders service is not available');
+        },
+      },
+      { path: '/loop', redirect: '/loop-back' },
+      { path: '/loop-back', redirect: '/loop' },
     ],
   },
 ];
@@ -125,4 +136,4 @@ app.useDevelopment(true);
 app.useRouter({ routes, mode: 'hash' });
 app.run('#app');
 
-mount({ src: './panel.html', open: true });
+mount({ src: './panel.html' });
