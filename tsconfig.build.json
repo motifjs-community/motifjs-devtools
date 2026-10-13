@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": []
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/panel"
+  ]
+}

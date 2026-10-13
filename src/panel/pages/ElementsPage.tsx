@@ -1,0 +1,315 @@
+import { Component, FromService } from '@motifx/core';
+import { formatPath, formatValue } from '../format';
+import { DevtoolsModel } from '../model/DevtoolsModel';
+import { ElementsModel, valueId, type Row } from '../model/ElementsModel';
+
+const FRAMEWORK_PROPS = new Set(['indexkey', 'runover', 'childs', 'initializeComponent', 'oninitializeComponent', 'key', 'ref', 'options', 'transition']);
+
+function TreeRow(props: { row: Row; model: ElementsModel }) {
+  const { row, model } = props;
+  return (
+    <div
+      class={() => `dt-row${model.state.selected === row.key ? ' selected' : ''}${row.named ? ' named' : ''}${row.connected ? '' : ' detached'}`}
+      style={() => `--depth: ${row.depth}`}
+      onclick={() => model.select(row)}
+      onmouseenter={() => model.hover(row)}
+    >
+      <button
+        type="button"
+        class={() => (row.hasChildren ? (row.expanded ? 'dt-caret open' : 'dt-caret') : 'dt-caret leaf')}
+        aria-label={() => (row.expanded ? 'Collapse' : 'Expand')}
+        onclick:stop={() => model.toggle(row)}
+      ></button>
+      <span class="dt-glyph" x-display={() => row.named}></span>
+      <span class="dt-type" x-display={() => row.named}>{() => row.type}</span>
+      <span class="dt-tag">{() => `<${row.tag}>`}</span>
+      <span class="dt-fill"></span>
+      <span class="dt-flag waiting" x-display={() => row.waiting}>WAITING</span>
+      <span class="dt-flag hidden" x-display={() => !row.visible && !row.waiting}>HIDDEN</span>
+      <span class={() => (row.connected ? 'dt-dot ok' : 'dt-dot')} title={() => (row.connected ? 'In the document' : 'Not in the document')}></span>
+    </div>
+  );
+}
+
+function Value(props: { value: unknown }) {
+  const formatted = formatValue(props.value);
+  return <span class={`dt-value ${formatted.kind}`}>{formatted.text}</span>;
+}
+
+function PropNode(props: { name: string; value: unknown; keys: string[]; model: ElementsModel; getter?: boolean }) {
+  const { model, keys } = props;
+  const id = valueId(keys);
+  const shown = props.getter ? { kind: 'getter' } : props.value;
+  const expandable = !props.getter && formatValue(props.value).kind === 'object';
+  const node = () => model.state.values[id];
+  const entries = () => {
+    const value = node();
+    return value !== undefined && 'entries' in value ? value.entries : [];
+  };
+  const more = () => {
+    const value = node();
+    return value !== undefined && 'entries' in value ? value.total - value.entries.length : 0;
+  };
+  const error = () => {
+    const value = node();
+    return value !== undefined && 'error' in value ? value.error : '';
+  };
+  return (
+    <div class="dt-prop">
+      <div class="dt-prop-row" style={`--level: ${keys.length - 1}`}>
+        <button
+          type="button"
+          class={() => (expandable ? (node() !== undefined ? 'dt-caret open' : 'dt-caret') : 'dt-caret leaf')}
+          aria-label="Expand value"
+          onclick={() => {
+            if (expandable) void model.toggleValue(keys);
+          }}
+        ></button>
+        <span class="dt-prop-key">{props.name}</span>
+        <Value value={shown} />
+      </div>
+      <div class="dt-prop-children" x-display={() => node() !== undefined}>
+        {entries().map((entry) => (
+          <PropNode key={entry.key} name={entry.key} value={entry.value} getter={entry.getter} keys={[...keys, entry.key]} model={model} />
+        ))}
+        <div class="dt-more" style={`--level: ${keys.length}`} x-display={() => more() > 0}>{() => `… ${more()} more`}</div>
+        <div class="dt-more dt-error" style={`--level: ${keys.length}`} x-display={() => error() !== ''}>
+          {() => error()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section(props: { title: string; count: () => number }) {
+  return (
+    <summary>
+      <span>{props.title}</span>
+      <span class="dt-count">{() => props.count()}</span>
+    </summary>
+  );
+}
+
+class Inspector extends Component<HTMLElement> {
+  static override elementTag = 'aside';
+  declare props: { model: ElementsModel };
+
+  override onConfigured() {
+    this.class.add('dt-inspector');
+  }
+
+  override view() {
+    const m = this.props.model;
+    const data = () => m.state.inspection;
+    const props = () => Object.entries(data()?.functionProps ?? data()?.props ?? {}).filter(([key]) => !FRAMEWORK_PROPS.has(key));
+    const classes = () => [...(data()?.classes.static ?? []), ...(data()?.classes.reactive ?? []).flatMap((r) => r.classes)];
+    return (
+      <>
+        <div class="dt-empty small" x-display={() => data() === null}>Select a component in the tree.</div>
+        <div class="dt-inspect" x-display={() => data() !== null}>
+          <header class="dt-inspect-head">
+            <small>INSPECTING</small>
+            <div class="dt-inspect-title">
+              <b>{() => data()?.type || `<${data()?.tag ?? ''}>`}</b>
+              <code class="dt-chip">{() => formatPath(data()?.path ?? null)}</code>
+              <span class="dt-fill"></span>
+              <button
+                type="button"
+                class="dt-icon-button"
+                title={() => (data()?.visible ? 'Hide' : 'Show')}
+                aria-label="Toggle visibility"
+                onclick={() => m.setVisible(!data()?.visible)}
+              >
+                {() => (data()?.visible ? '◉' : '○')}
+              </button>
+            </div>
+            <nav class="dt-tabs">
+              <button type="button" class={() => (m.state.tab === 'details' ? 'active' : '')} onclick={() => m.setTab('details')}>
+                Details
+              </button>
+              <button type="button" class={() => (m.state.tab === 'effects' ? 'active' : '')} onclick={() => m.setTab('effects')}>
+                {() => `Effects ${data()?.effects.length ?? 0}`}
+              </button>
+              <button type="button" class={() => (m.state.tab === 'extensions' ? 'active' : '')} onclick={() => m.setTab('extensions')}>
+                Extensions
+              </button>
+            </nav>
+          </header>
+
+          <div class="dt-inspect-body" x-display={() => m.state.tab === 'details'}>
+            <details open>
+              <Section title="Props" count={() => props().length} />
+              <div class="dt-kv">
+                {props().map(([key, value]) => (
+                  <PropNode key={key} name={key} value={value} keys={[key]} model={m} />
+                ))}
+              </div>
+            </details>
+            <details open>
+              <Section title="Bindings" count={() => data()?.bindings.length ?? 0} />
+              <ul class="dt-list">
+                {(data()?.bindings ?? []).map((binding, index) => (
+                  <li key={index}>
+                    <span class="dt-pill">{binding.kind}</span>
+                    <span>{() => binding.property ?? (typeof binding.member === 'string' ? binding.member : '')}</span>
+                    <span class="dt-fill"></span>
+                    <span class={binding.active === false ? 'dt-state' : 'dt-state ok'}>{() => (binding.active === false ? 'inactive' : 'active')}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+            <details open>
+              <Section title="Classes" count={() => classes().length} />
+              <div class="dt-chips">
+                {classes().map((name) => (
+                  <button key={name} type="button" class="dt-chip removable" title={`Remove ${name}`} onclick={() => m.setClass(name, false)}>
+                    {name}
+                  </button>
+                ))}
+              </div>
+              <form
+                class="dt-add"
+                onsubmit={(sender, e) => {
+                  e.preventDefault();
+                  const input = (sender.element as HTMLFormElement).elements.namedItem('name') as HTMLInputElement;
+                  void m.setClass(input.value, true);
+                  input.value = '';
+                }}
+              >
+                <input name="name" placeholder="Add class…" autocomplete="off" />
+              </form>
+            </details>
+            <details>
+              <Section title="Attributes" count={() => data()?.attributes.length ?? 0} />
+              <ul class="dt-list">
+                {(data()?.attributes ?? []).map((attribute, index) => (
+                  <li key={index}>
+                    <span>{String(attribute.name ?? attribute.key ?? '')}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+            <details>
+              <Section title="Events" count={() => data()?.events.length ?? 0} />
+              <ul class="dt-list">
+                {(data()?.events ?? []).map((event, index) => (
+                  <li key={index}>
+                    <span class="dt-pill">{() => (event.dom ? 'dom' : 'component')}</span>
+                    <span>{event.name}</span>
+                    <span class="dt-fill"></span>
+                    <Value value={event.handler} />
+                  </li>
+                ))}
+              </ul>
+            </details>
+            <details>
+              <Section title="Hooks" count={() => data()?.hooks.length ?? 0} />
+              <ul class="dt-list">
+                {(data()?.hooks ?? []).map((hook) => (
+                  <li key={hook.name}>
+                    <span>{hook.name}</span>
+                    <span class="dt-fill"></span>
+                    <span class="dt-muted">{`${hook.method ? 'method' : ''}${hook.method && hook.handlers ? ' + ' : ''}${hook.handlers ? `${hook.handlers} handler` : ''}`}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+            <details>
+              <Section title="Services" count={() => data()?.services?.requested.length ?? 0} />
+              <ul class="dt-list">
+                <li>
+                  <span class="dt-muted">scope</span>
+                  <span>{() => data()?.services?.scope?.kind ?? '–'}</span>
+                </li>
+                {(data()?.services?.requested ?? []).map((token) => (
+                  <li key={token}>
+                    <span>{token}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </div>
+
+          <div class="dt-inspect-body" x-display={() => m.state.tab === 'effects'}>
+            <ul class="dt-list">
+              {(data()?.effects ?? []).map((effect, index) => (
+                <li key={index}>
+                  <span class="dt-pill">{effect.kind}</span>
+                  <span>{`${effect.runs} runs`}</span>
+                  <span class="dt-fill"></span>
+                  <span class="dt-muted">{`${effect.lastDuration.toFixed(2)} ms`}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div class="dt-inspect-body" x-display={() => m.state.tab === 'extensions'}>
+            <pre class="dt-pre">{() => JSON.stringify(data()?.extensions ?? {}, null, 2)}</pre>
+          </div>
+        </div>
+      </>
+    );
+  }
+}
+
+export class ElementsPage extends Component<HTMLElement> {
+  static override elementTag = 'section';
+  model = new ElementsModel(FromService(DevtoolsModel)!.client);
+
+  override onConfigured() {
+    this.class.add('dt-elements');
+    this.motif.setDisposable(() => this.model.dispose());
+    this.bindings.watch(() => {
+      if (this.model.state.revealed === 0) return;
+      requestAnimationFrame(() => (this.element as HTMLElement).querySelector('.dt-row.selected')?.scrollIntoView({ block: 'nearest' }));
+    });
+  }
+
+  override view() {
+    const m = this.model;
+    return (
+      <>
+        <div class="dt-tree-pane">
+          <div class="dt-toolbar">
+            <input
+              class="dt-search"
+              type="search"
+              placeholder="Find component…"
+              value={() => m.state.query}
+              oninput={(e) => m.setQuery((e.target as HTMLInputElement).value)}
+            />
+            <button
+              type="button"
+              class={() => (m.state.hidePlain ? 'dt-icon-button active' : 'dt-icon-button')}
+              title={() => (m.state.hidePlain ? 'Show plain elements' : 'Show named components only')}
+              aria-label="Toggle plain elements"
+              onclick={() => m.setHidePlain(!m.state.hidePlain)}
+            >
+              ⛉
+            </button>
+            <button type="button" class="dt-icon-button" title="Reload tree" aria-label="Reload tree" onclick={() => m.loadTree()}>
+              ⟳
+            </button>
+          </div>
+          <div class="dt-tree-head">
+            <span>COMPONENT TREE</span>
+            <span>{() => `${m.state.rows.length} / ${m.state.total} NODES`}</span>
+          </div>
+          <div class="dt-tree" role="tree" onmouseleave={() => m.hover(null)}>
+            {m.state.rows.map((row) => (
+              <TreeRow key={row.key} row={row} model={m} />
+            ))}
+          </div>
+          <footer class="dt-tree-foot">
+            <span>
+              <i class="dt-dot ok"></i> {() => `${m.state.connected} connected`}
+            </span>
+            <span>{() => `${m.state.detached} detached`}</span>
+            <span class="dt-error" x-display={() => m.state.error !== null}>{() => m.state.error ?? ''}</span>
+          </footer>
+        </div>
+        <Inspector model={m} />
+      </>
+    );
+  }
+}
