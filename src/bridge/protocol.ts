@@ -41,6 +41,7 @@ export const READ_METHODS = [
   'getExtensions',
   'readExtension',
   'readValue',
+  'readStore',
 ] as const;
 
 export const WRITE_METHODS = [

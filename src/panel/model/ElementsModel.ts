@@ -1,6 +1,7 @@
 import { reactive } from '@motifx/core';
 import type { Client } from '../../client/client';
 import { pathKey } from '../format';
+import { valueId, type ValueEntry, type ValueNode, type ValueSource } from '../ValueTree';
 
 export type TreeNode = {
   path: number[];
@@ -31,6 +32,7 @@ export type Row = {
 
 export type Inspection = Omit<TreeNode, 'children'> & {
   props: Record<string, unknown>;
+  fields?: Record<string, unknown>;
   functionProps?: Record<string, unknown>;
   bindings: { kind: string; property?: string; member?: unknown; updateMode?: unknown; active: boolean | null }[];
   events: { name: string; type?: string; dom: boolean; handler?: unknown; modifiers?: string[] }[];
@@ -42,10 +44,9 @@ export type Inspection = Omit<TreeNode, 'children'> & {
   extensions: Record<string, unknown>;
 };
 
-export type ValueEntry = { key: string; value: unknown; getter?: boolean };
-export type ValueNode = { entries: ValueEntry[]; total: number } | { error: string };
+export type ValueOrigin = 'props' | 'functionProps' | 'fields';
 
-export const valueId = (keys: readonly string[]) => keys.join('');
+const valueKey = (origin: ValueOrigin, keys: readonly string[]) => origin + '' + valueId(keys);
 
 const PLAIN_TYPES = new Set(['Component', 'FragmentNode']);
 const AUTO_EXPAND_ROWS = 400;
@@ -127,24 +128,38 @@ export class ElementsModel {
     this.rebuildRows();
   }
 
-  async toggleValue(keys: string[]) {
-    const id = valueId(keys);
+  readonly propsSource: ValueSource = {
+    node: (keys) => this.state.values[valueKey(this.propsOrigin(), keys)],
+    toggle: (keys) => void this.toggleValue(keys),
+  };
+
+  readonly fieldsSource: ValueSource = {
+    node: (keys) => this.state.values[valueKey('fields', keys)],
+    toggle: (keys) => void this.toggleValue(keys, 'fields'),
+  };
+
+  async toggleValue(keys: string[], origin: ValueOrigin = this.propsOrigin()) {
+    const id = valueKey(origin, keys);
     if (this.state.values[id] !== undefined) {
       for (const key of Object.keys(this.state.values)) if (key === id || key.startsWith(id + '')) delete this.state.values[key];
       return;
     }
-    await this.loadValue(keys);
+    await this.loadValue(origin, keys);
   }
 
-  private async loadValue(keys: string[]) {
+  private propsOrigin(): ValueOrigin {
+    return this.state.inspection?.functionProps ? 'functionProps' : 'props';
+  }
+
+  private async loadValue(origin: ValueOrigin, keys: string[]) {
     const path = this.selectedPath();
     if (path === null) return;
-    const source = this.state.inspection?.functionProps ? 'functionProps' : 'props';
+    const id = valueKey(origin, keys);
     try {
-      const result = await this.client.request<{ ok: boolean; value?: { entries: ValueEntry[]; total: number }; error?: string }>('readValue', path, source, keys);
-      this.state.values[valueId(keys)] = result.ok && result.value ? { entries: result.value.entries, total: result.value.total } : { error: result.error ?? 'failed' };
+      const result = await this.client.request<{ ok: boolean; value?: { entries: ValueEntry[]; total: number }; error?: string }>('readValue', path, origin, keys);
+      this.state.values[id] = result.ok && result.value ? { entries: result.value.entries, total: result.value.total } : { error: result.error ?? 'failed' };
     } catch (error) {
-      this.state.values[valueId(keys)] = { error: error instanceof Error ? error.message : String(error) };
+      this.state.values[id] = { error: error instanceof Error ? error.message : String(error) };
     }
   }
 
@@ -230,8 +245,8 @@ export class ElementsModel {
     } catch {
       this.state.inspection = null;
     }
-    const open = Object.keys(this.state.values).map((id) => id.split(''));
-    for (const keys of open) await this.loadValue(keys);
+    const open = Object.keys(this.state.values).map((id) => id.split(''));
+    for (const [origin, keys] of open) await this.loadValue(origin as ValueOrigin, keys.split(''));
   }
 
   private scheduleTree() {

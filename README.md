@@ -10,8 +10,8 @@
 
 - **Elements.** The live component tree. Every element is a component; class and function components show
   by name, plain elements can be hidden with one button. Search by name or tag, `WAITING` / `HIDDEN`
-  badges, and whether each component is in the document. The inspector lists props (opened one level at a
-  time, getters are never called), bindings, classes (add and remove), attributes, events, hooks, services,
+  badges, and whether each component is in the document. The inspector lists props and the component's own
+  fields such as `state` (opened one level at a time, getters are never called), bindings, classes (add and remove), attributes, events, hooks, services,
   effects and data from community packages, and can show or hide the component.
 - **Select in the page.** Point at something in the app to highlight its component, click to select it in
   the tree. Hovering a tree row highlights the component in the page.
@@ -27,7 +27,11 @@
   warning or error is shown once with how many times it came and when it was first and last seen; a warning
   opens to its details, an error to its name, cause and stack. The list can be filtered by level, and the menu
   shows how many there are.
-- **Stores.** The section is in the menu; its screen is not built yet.
+- **Stores.** Every `reactive`, `useModel`, signal and computed the app keeps, named after the component or
+  service field that holds it (`Settings.prefs`, `ThemeService.theme`), with its type and a short value. A store
+  opens to who keeps it (a component links to Elements), the last field that changed and its value one level at
+  a time; a string, number or boolean value can be edited in place. The list can be filtered by type. Flush
+  triggers in Reactivity name the store and field that changed.
 
 Light and dark themes follow the system, or are chosen in the header.
 
@@ -56,6 +60,15 @@ if (process.env.NODE_ENV !== 'production') import('@motifx-community/devtools').
 right of the page, or in a separate window; buttons in its header switch between the three. The position
 and size are remembered in `localStorage` under `motif-devtools:dock`. Closing the separate window brings the
 panel back to where it was docked.
+
+Stores created at module level (`export const cart = reactive({ … })`) exist before `useDevelopment(true)`
+runs. To list them too, set the development flag before the app code:
+
+```html
+<script>globalThis.__MOTIF_DEV__ = true;</script>
+```
+
+Stores kept in a component or service field show up without it.
 
 `src` is the URL of the panel page. The example serves it as `panel.html`; the panel page is not bundled
 into the package yet.

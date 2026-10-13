@@ -4,6 +4,7 @@ import type { Client, ClientEvent, ClientStatus } from '../src/client/client';
 import { DevtoolsModel } from '../src/panel/model/DevtoolsModel';
 import { MAX_FLUSHES, ReactivityModel } from '../src/panel/model/ReactivityModel';
 import { ReactivityPage } from '../src/panel/pages/ReactivityPage';
+import { StoresModel } from '../src/panel/model/StoresModel';
 import { tick } from './helpers';
 
 const settle = async () => {
@@ -72,15 +73,17 @@ async function render(time = () => 1_000_000) {
   const devtools = new DevtoolsModel(client);
   devtools.state.status = { connected: true, version: 1 };
   model = new ReactivityModel(client, time);
+  const stores = new StoresModel(client, () => false);
   document.body.innerHTML = '<div id="app"></div>';
   const builder = Application.CreateBuilder();
   builder.services.addSingleton(DevtoolsModel, { useValue: devtools });
   builder.services.addSingleton(ReactivityModel, { useValue: model });
+  builder.services.addSingleton(StoresModel, { useValue: stores });
   app = builder.build();
   app.run('#app', new ReactivityPage());
   await devtools.refresh();
   await tick();
-  return { emit, devtools, root: document.querySelector('.dt-profile') as HTMLElement };
+  return { emit, devtools, stores, root: document.querySelector('.dt-profile') as HTMLElement };
 }
 
 const rows = (root: HTMLElement) => [...root.querySelectorAll('.dt-flush .dt-flush-row')];
@@ -148,6 +151,19 @@ describe('Reactivity', () => {
     links[0].click();
     expect(revealed).toEqual([[0, 1]]);
     expect(devtools.state.section).toBe('elements');
+  });
+
+  it('names the store and path of a trigger', async () => {
+    const { emit, root, stores } = await render();
+    stores.state.stores = [{ id: 2, name: 'Cart', type: 'reactive', value: {}, holders: [{ kind: 'component', path: [0], type: 'CartView', field: 'cart' }] }];
+    const target = { kind: 'object', type: 'Cart', keys: 2 };
+    emit(flush(1, 1, { triggers: [{ target, key: 'name', count: 1, store: { id: 2, path: ['user'] } }, { target, key: 'n', count: 1, store: { id: 9, path: [] } }] }));
+    await tick();
+    (rows(root)[0] as HTMLButtonElement).click();
+    await settle();
+    const detail = root.querySelector('.dt-flush-detail') as HTMLElement;
+    expect(detail.textContent).toContain('CartView.cart.user.name');
+    expect(detail.textContent).toContain('store#9.n');
   });
 
   it('counts runs of the last minute only', async () => {

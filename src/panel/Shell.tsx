@@ -9,7 +9,7 @@ import { ElementsPage } from './pages/ElementsPage';
 import { ReactivityPage } from './pages/ReactivityPage';
 import { LogsPage } from './pages/LogsPage';
 import { RouterPage } from './pages/RouterPage';
-import { SectionPlaceholder } from './pages/SectionPlaceholder';
+import { StoresPage } from './pages/StoresPage';
 
 export const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: 'elements', label: 'Elements', icon: ICONS.elements },
@@ -142,14 +142,8 @@ export class Shell extends Component<HTMLDivElement> {
             <ElementsPage x-wait={() => !m.state.status.connected || m.state.section !== 'elements'} />
             <ReactivityPage x-wait={() => !m.state.status.connected || m.state.section !== 'reactivity'} />
             <RouterPage x-wait={() => !m.state.status.connected || m.state.section !== 'router'} />
+            <StoresPage x-wait={() => !m.state.status.connected || m.state.section !== 'stores'} />
             <LogsPage x-wait={() => !m.state.status.connected || m.state.section !== 'logs'} />
-            {SECTIONS.filter((section) => section.id === 'stores').map((section) => (
-              <SectionPlaceholder
-                key={section.id}
-                title={section.label}
-                x-wait={() => !m.state.status.connected || m.state.section !== section.id}
-              />
-            ))}
           </div>
         </main>
       </>

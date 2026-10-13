@@ -1,4 +1,4 @@
-import { Application, Component, RouterView, reactive, useNavigation, type RouteItem } from '@motifx/core';
+import { Application, Component, FromService, RouterView, createSignal, reactive, useNavigation, type RouteItem } from '@motifx/core';
 import { mount } from '@motifx-community/devtools';
 
 const store = reactive({
@@ -72,13 +72,32 @@ function OrderPage() {
   return <h2>{`Order #${nav.params.id}`}</h2>;
 }
 
-function Settings() {
-  return (
-    <label>
-      <input type="checkbox" checked={() => store.unsaved} onchange={() => (store.unsaved = !store.unsaved)} />
-      Unsaved changes
-    </label>
-  );
+class ThemeService {
+  theme = createSignal<'light' | 'dark'>('light');
+}
+
+class Settings extends Component<HTMLElement> {
+  static override elementTag = 'section';
+  themes = FromService(ThemeService)!;
+  prefs = reactive({ compact: false, pageSize: 20 });
+
+  override view() {
+    return (
+      <>
+        <label>
+          <input type="checkbox" checked={() => store.unsaved} onchange={() => (store.unsaved = !store.unsaved)} />
+          Unsaved changes
+        </label>
+        <label>
+          <input type="checkbox" checked={() => this.prefs.compact} onchange={() => (this.prefs.compact = !this.prefs.compact)} />
+          Compact rows
+        </label>
+        <button type="button" onclick={() => (this.themes.theme.value = this.themes.theme.value === 'light' ? 'dark' : 'light')}>
+          {() => `Theme: ${this.themes.theme.value}`}
+        </button>
+      </>
+    );
+  }
 }
 
 function AppShell() {
@@ -131,7 +150,9 @@ const routes: RouteItem[] = [
   },
 ];
 
-const app = Application.CreateBuilder().build();
+const builder = Application.CreateBuilder();
+builder.services.addSingleton(ThemeService, ThemeService);
+const app = builder.build();
 app.useDevelopment(true);
 app.useRouter({ routes, mode: 'hash' });
 app.run('#app');

@@ -91,6 +91,15 @@ describe('bridge', () => {
     expect(inspected.ok).toBe(true);
   });
 
+  it('keeps the holder path of a store whole and sends its value shallow', async () => {
+    runApp();
+    start();
+    const response = (await call('getStores')) as { value: { holders: { field: string }[]; value: unknown }[] };
+    const store = response.value.find((s) => s.holders.some((h) => h.field === 'state'))!;
+    expect(store.holders).toEqual([{ kind: 'component', path: [0], type: 'Counter', field: 'state' }]);
+    expect(store.value).toEqual({ count: 0 });
+  });
+
   it('rejects methods outside the allow list', async () => {
     runApp();
     start();

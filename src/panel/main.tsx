@@ -5,12 +5,14 @@ import { DevtoolsModel } from './model/DevtoolsModel';
 import { LogsModel } from './model/LogsModel';
 import { ReactivityModel } from './model/ReactivityModel';
 import { RouterModel } from './model/RouterModel';
+import { StoresModel } from './model/StoresModel';
 import { Shell } from './Shell';
 import './styles/panel.css';
 import './styles/elements.css';
 import './styles/reactivity.css';
 import './styles/router.css';
 import './styles/logs.css';
+import './styles/stores.css';
 
 const peer = () => (window.opener as Window | null) ?? (window.parent !== window ? window.parent : null);
 const client = createClient(windowPort(window, peer));
@@ -18,6 +20,11 @@ const model = new DevtoolsModel(client);
 const reactivity = new ReactivityModel(client);
 const router = new RouterModel(client);
 const logs = new LogsModel(client);
+const stores = new StoresModel(client, () => model.state.section === 'stores');
+
+effect(() => {
+  if (model.state.section === 'stores' && model.state.status.connected) void stores.load();
+});
 
 effect(() => {
   const theme = model.state.theme;
@@ -30,4 +37,5 @@ builder.services.addSingleton(DevtoolsModel, { useValue: model });
 builder.services.addSingleton(ReactivityModel, { useValue: reactivity });
 builder.services.addSingleton(RouterModel, { useValue: router });
 builder.services.addSingleton(LogsModel, { useValue: logs });
+builder.services.addSingleton(StoresModel, { useValue: stores });
 builder.build().run('#app', new Shell());

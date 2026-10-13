@@ -16,3 +16,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Reactivity: run and flush counters, flush timeline with triggers and effects, links from effects to Elements.
 - Router: current route with params and chain, recent navigations with outcome, duration and details, outcome filter.
 - Logs: warnings and errors with count, first and last seen, details, error cause and stack, level filter.
+- Stores: stores named after the field that keeps them, holders, last change, values opened one level at a time and edited in place, type filter.
+- Elements: the component's own fields in the inspector.
+- Reactivity: triggers name the store and field that changed.
