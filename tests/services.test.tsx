@@ -157,6 +157,21 @@ describe('Services', () => {
     expect(calls.filter((c) => c.method === 'readService').at(-1)?.args).toEqual([4, 'CartService', ['items']]);
   });
 
+  it('reads an open service again after a reactivity flush', async () => {
+    const { root, emit, calls } = await render();
+    emit({ type: 'reactivity:flush', payload: { duration: 1, runs: 1, triggers: [], effects: [] } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await settle();
+    expect(calls.some((c) => c.method === 'readService')).toBe(false);
+    (all(root, '.dt-service-row')[0] as HTMLButtonElement).click();
+    await settle();
+    calls.length = 0;
+    emit({ type: 'reactivity:flush', payload: { duration: 1, runs: 1, triggers: [], effects: [] } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await settle();
+    expect(calls.filter((c) => c.method === 'readService').map((c) => c.args)).toEqual([[4, 'CartService', []]]);
+  });
+
   it('does not open a service that was not created', async () => {
     const { root, calls } = await render();
     (all(root, '.dt-service-row')[1] as HTMLButtonElement).click();
