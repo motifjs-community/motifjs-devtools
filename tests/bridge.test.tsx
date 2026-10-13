@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Application, Component, reactive } from '@motifx/core';
+import { Application, Component, createSignal, reactive } from '@motifx/core';
 import { createBridge, type Bridge } from '../src/bridge/bridge';
 import { CHANNEL, type BridgeMessage, type BridgeResponse } from '../src/bridge/protocol';
 import { tick } from './helpers';
@@ -13,6 +13,10 @@ class Counter extends Component<HTMLDivElement> {
 
 class Basket {
   items = ['tea', 'cake'];
+}
+
+class Theme {
+  mode = createSignal({ name: 'dark', contrast: 1 });
 }
 
 let app: Application | null = null;
@@ -35,6 +39,7 @@ const runApp = () => {
   document.body.innerHTML = '<div id="app"></div>';
   const builder = Application.CreateBuilder();
   builder.services.addSingleton(Basket, Basket);
+  builder.services.addSingleton(Theme, Theme);
   app = builder.build();
   app.useDevelopment(true);
   const root = new Counter();
@@ -123,6 +128,18 @@ describe('bridge', () => {
     expect(root.services.find((s) => s.token === 'Basket')?.instance).toEqual({ kind: 'object', type: 'Basket', keys: 1 });
     const read = (await call('readService', root.id, 'Basket', [])) as { value: { ok: boolean; value: { entries: unknown[] } } };
     expect(read.value.value.entries).toEqual([{ key: 'items', value: { kind: 'array', length: 2 } }]);
+  });
+
+  it('shows a signal in a service by its value and opens through it', async () => {
+    runApp();
+    start();
+    app!.provider.get(Theme);
+    const scopes = (await call('getScopes')) as { value: { id: number; kind: string }[] };
+    const root = scopes.value.find((s) => s.kind === 'root')!.id;
+    const fields = (await call('readService', root, 'Theme', [])) as { value: { value: { entries: unknown[] } } };
+    expect(fields.value.value.entries).toEqual([{ key: 'mode', value: { kind: 'signal', type: 'signal', value: { kind: 'object', type: 'Object', keys: 2 } } }]);
+    const mode = (await call('readService', root, 'Theme', ['mode'])) as { value: { value: { entries: unknown[] } } };
+    expect(mode.value.value.entries).toEqual([{ key: 'name', value: 'dark' }, { key: 'contrast', value: 1 }]);
   });
 
   it('rejects methods outside the allow list', async () => {

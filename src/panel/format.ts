@@ -59,6 +59,12 @@ export function formatValue(value: unknown): Formatted {
       return { text: `Array(${record.length})`, kind: 'object' };
     case 'object':
       return { text: `${record.type} {${record.keys}}`, kind: 'object' };
+    case 'signal': {
+      const empty = record.value === undefined || (record.value as Record<string, unknown> | null)?.[MARK] === 'undefined';
+      if (record.stale === true && empty) return { text: `${record.type}(stale)`, kind: 'other' };
+      const inner = formatValue(record.value);
+      return { text: `${record.type}(${inner.text})${record.stale === true ? ' stale' : ''}`, kind: inner.kind };
+    }
   }
   const keys = Object.keys(record);
   return { text: `{${keys.slice(0, 3).join(', ')}${keys.length > 3 ? ', …' : ''}}`, kind: 'object' };
