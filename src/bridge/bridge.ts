@@ -35,7 +35,7 @@ export interface Bridge {
 
 const METHODS = new Set<string>([...READ_METHODS, ...WRITE_METHODS]);
 const OWN_METHODS = new Set<string>(PAGE_METHODS);
-const DEPTH: Record<string, number> = { getTree: Infinity, getRoutes: 8, inspect: 6, readExtension: 6, getWarnings: 6, getErrors: 8 };
+const DEPTH: Record<string, number> = { getTree: Infinity, getRoutes: 8, inspect: 6, readExtension: 6, getWarnings: 6, getErrors: 8, getScopes: 6, readValue: 6, readStore: 6, readService: 6 };
 
 type StoreRecord = { id: unknown; name: unknown; type: unknown; value: unknown; stale?: unknown; released?: unknown; holders: unknown };
 

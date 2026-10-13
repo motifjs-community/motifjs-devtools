@@ -10,12 +10,14 @@ import { ReactivityPage } from './pages/ReactivityPage';
 import { LogsPage } from './pages/LogsPage';
 import { RouterPage } from './pages/RouterPage';
 import { StoresPage } from './pages/StoresPage';
+import { ServicesPage } from './pages/ServicesPage';
 
 export const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: 'elements', label: 'Elements', icon: ICONS.elements },
   { id: 'reactivity', label: 'Reactivity', icon: ICONS.reactivity },
   { id: 'router', label: 'Router', icon: ICONS.router },
   { id: 'stores', label: 'Stores', icon: ICONS.stores },
+  { id: 'services', label: 'Services', icon: ICONS.services },
   { id: 'logs', label: 'Logs', icon: ICONS.logs },
 ];
 
@@ -143,6 +145,7 @@ export class Shell extends Component<HTMLDivElement> {
             <ReactivityPage x-wait={() => !m.state.status.connected || m.state.section !== 'reactivity'} />
             <RouterPage x-wait={() => !m.state.status.connected || m.state.section !== 'router'} />
             <StoresPage x-wait={() => !m.state.status.connected || m.state.section !== 'stores'} />
+            <ServicesPage x-wait={() => !m.state.status.connected || m.state.section !== 'services'} />
             <LogsPage x-wait={() => !m.state.status.connected || m.state.section !== 'logs'} />
           </div>
         </main>

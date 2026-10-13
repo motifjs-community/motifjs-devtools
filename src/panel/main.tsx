@@ -6,6 +6,7 @@ import { LogsModel } from './model/LogsModel';
 import { ReactivityModel } from './model/ReactivityModel';
 import { RouterModel } from './model/RouterModel';
 import { StoresModel } from './model/StoresModel';
+import { ServicesModel } from './model/ServicesModel';
 import { Shell } from './Shell';
 import './styles/panel.css';
 import './styles/elements.css';
@@ -13,6 +14,7 @@ import './styles/reactivity.css';
 import './styles/router.css';
 import './styles/logs.css';
 import './styles/stores.css';
+import './styles/services.css';
 
 const peer = () => (window.opener as Window | null) ?? (window.parent !== window ? window.parent : null);
 const client = createClient(windowPort(window, peer));
@@ -21,9 +23,14 @@ const reactivity = new ReactivityModel(client);
 const router = new RouterModel(client);
 const logs = new LogsModel(client);
 const stores = new StoresModel(client, () => model.state.section === 'stores');
+const services = new ServicesModel(client, () => model.state.section === 'services');
 
 effect(() => {
   if (model.state.section === 'stores' && model.state.status.connected) void stores.load();
+});
+
+effect(() => {
+  if (model.state.section === 'services' && model.state.status.connected) void services.load();
 });
 
 effect(() => {
@@ -38,4 +45,5 @@ builder.services.addSingleton(ReactivityModel, { useValue: reactivity });
 builder.services.addSingleton(RouterModel, { useValue: router });
 builder.services.addSingleton(LogsModel, { useValue: logs });
 builder.services.addSingleton(StoresModel, { useValue: stores });
+builder.services.addSingleton(ServicesModel, { useValue: services });
 builder.build().run('#app', new Shell());

@@ -11,6 +11,10 @@ class Counter extends Component<HTMLDivElement> {
   }
 }
 
+class Basket {
+  items = ['tea', 'cake'];
+}
+
 let app: Application | null = null;
 let bridge: Bridge | null = null;
 let messages: BridgeMessage[] = [];
@@ -29,7 +33,9 @@ const call = async (method: string, ...args: unknown[]) => {
 
 const runApp = () => {
   document.body.innerHTML = '<div id="app"></div>';
-  app = Application.CreateBuilder().build();
+  const builder = Application.CreateBuilder();
+  builder.services.addSingleton(Basket, Basket);
+  app = builder.build();
   app.useDevelopment(true);
   const root = new Counter();
   app.run('#app', root);
@@ -79,7 +85,7 @@ describe('bridge', () => {
   it('returns JSON-safe results for reads', async () => {
     runApp();
     start();
-    for (const method of ['getTree', 'getCounters', 'getWarnings', 'getErrors', 'getStores', 'getServices', 'getNavigations', 'getExtensions']) {
+    for (const method of ['getTree', 'getCounters', 'getWarnings', 'getErrors', 'getStores', 'getServices', 'getScopes', 'getNavigations', 'getExtensions']) {
       const response = await call(method);
       expect(response.ok, method).toBe(true);
       const value = (response as { value: unknown }).value;
@@ -99,6 +105,24 @@ describe('bridge', () => {
     expect(store.holders).toEqual([{ kind: 'component', path: [0], type: 'Counter', field: 'state' }]);
     expect(store.value).toEqual({ count: 0 });
     expect('released' in store).toBe(false);
+  });
+
+  it('keeps the preview of every entry when a value is opened', async () => {
+    runApp();
+    start();
+    const tree = (await call('readValue', [0], 'fields', [])) as { value: { ok: boolean; value: { entries: { key: string; value: unknown }[] } } };
+    expect(tree.value.value.entries.find((e) => e.key === 'state')?.value).toEqual({ kind: 'object', type: 'Object', keys: 1 });
+  });
+
+  it('sends scopes whole and reads a service', async () => {
+    runApp();
+    start();
+    app!.provider.get(Basket);
+    const scopes = (await call('getScopes')) as { value: { id: number; kind: string; services: { token: string; instance: unknown }[] }[] };
+    const root = scopes.value.find((s) => s.kind === 'root')!;
+    expect(root.services.find((s) => s.token === 'Basket')?.instance).toEqual({ kind: 'object', type: 'Basket', keys: 1 });
+    const read = (await call('readService', root.id, 'Basket', [])) as { value: { ok: boolean; value: { entries: unknown[] } } };
+    expect(read.value.value.entries).toEqual([{ key: 'items', value: { kind: 'array', length: 2 } }]);
   });
 
   it('rejects methods outside the allow list', async () => {
