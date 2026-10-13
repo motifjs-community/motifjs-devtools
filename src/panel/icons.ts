@@ -3,6 +3,14 @@ const svg = (body: string) =>
 
 export const ICONS = {
   logo: '<svg viewBox="0 0 236 236" width="22" height="22" fill="#8B7CFF" aria-hidden="true"><path d="M118 20 158 60 136 82 118 64 100 82 78 60Z"/><path d="m216 118-40 40-22-22 18-18-18-18 22-22Z"/><path d="m118 216-40-40 22-22 18 18 18-18 22 22Z"/><path d="m20 118 40-40 22 22-18 18 18 18-22 22Z"/></svg>',
+  home: svg('<path d="M2 7.5 8 2.5l6 5"/><path d="M3.5 6.5v7h9v-7"/><path d="M6.5 13.5v-4h3v4"/>'),
+  star: svg('<path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6l-3.8 2 .7-4.3-3.1-3 4.3-.6z"/>'),
+  code: svg('<path d="m5.5 4.5-3.5 3.5 3.5 3.5"/><path d="m10.5 4.5 3.5 3.5-3.5 3.5"/><path d="m9 2.5-2 11"/>'),
+  book: svg('<path d="M2.5 3h4a1.5 1.5 0 0 1 1.5 1.5V14a1 1 0 0 0-1-1H2.5z"/><path d="M13.5 3h-4A1.5 1.5 0 0 0 8 4.5V14a1 1 0 0 1 1-1h4.5z"/>'),
+  bug: svg('<rect x="4.5" y="5" width="7" height="9" rx="3.5"/><path d="M6 5V4a2 2 0 0 1 4 0v1"/><path d="M2 8.5h2.5M11.5 8.5H14M2.5 12.5l2-1M13.5 12.5l-2-1M2.5 4.5l2 1M13.5 4.5l-2 1"/>'),
+  idea: svg('<path d="M6 12h4"/><path d="M6.5 14h3"/><path d="M5.5 10.5A4.5 4.5 0 1 1 10.5 10.5c-.5.4-.5.8-.5 1.5H6c0-.7 0-1.1-.5-1.5z"/>'),
+  notes: svg('<rect x="3" y="2" width="10" height="12" rx="1.5"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3"/>'),
+  package: svg('<path d="M8 1.8 14 5v6l-6 3.2L2 11V5z"/><path d="M2 5l6 3.2L14 5M8 8.2v6"/>'),
   elements: svg('<path d="M8 1.8 14 5 8 8.2 2 5z"/><path d="m2 8 6 3.2L14 8"/><path d="m2 11 6 3.2 6-3.2"/>'),
   reactivity: svg('<path d="M1.5 8h3l1.5-4 3 8 1.5-4h4"/>'),
   router: svg('<circle cx="3.5" cy="12.5" r="1.5"/><circle cx="12.5" cy="3.5" r="1.5"/><path d="M5 12.5h3.5a2.5 2.5 0 0 0 0-5h-1a2.5 2.5 0 0 1 0-5H11"/>'),

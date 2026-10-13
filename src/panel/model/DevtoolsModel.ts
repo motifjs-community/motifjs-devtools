@@ -2,7 +2,7 @@ import { reactive } from '@motifx/core';
 import type { DockPosition } from '../../bridge/protocol';
 import type { Client, ClientStatus } from '../../client/client';
 
-export type Section = 'elements' | 'reactivity' | 'router' | 'stores' | 'services' | 'logs';
+export type Section = 'home' | 'elements' | 'reactivity' | 'router' | 'stores' | 'services' | 'logs';
 export type ThemeChoice = 'system' | 'light' | 'dark';
 
 export type Counters = {
@@ -19,7 +19,7 @@ const REFRESH_DELAY = 200;
 export class DevtoolsModel {
   readonly state = reactive({
     status: { connected: false, version: null } as ClientStatus,
-    section: 'elements' as Section,
+    section: 'home' as Section,
     theme: readTheme(),
     counters: null as Counters | null,
     issues: 0,

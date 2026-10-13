@@ -1,0 +1,197 @@
+.dt-hero {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 16px;
+  padding: 24px 26px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--dt-purple) 18%, transparent), transparent 55%),
+    var(--dt-bg-raised);
+}
+
+.dt-hero-logo {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 92px;
+  height: 92px;
+  border: 1px solid var(--dt-border);
+  border-radius: 20px;
+  background: var(--dt-bg);
+}
+
+.dt-hero-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dt-hero-main > small {
+  color: var(--dt-purple);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.dt-hero-main h1 {
+  margin: 0;
+  color: var(--dt-text-strong);
+  font-size: 22px;
+}
+
+.dt-hero-main p {
+  margin: 0;
+}
+
+.dt-hero-versions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.dt-version-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--dt-border);
+  border-radius: 999px;
+  background: var(--dt-bg);
+}
+
+.dt-version-chip small {
+  color: var(--dt-muted);
+  font-size: 11px;
+}
+
+.dt-version-chip b {
+  color: var(--dt-text-strong);
+  font: 600 12px var(--dt-mono);
+}
+
+.dt-version-chip.core {
+  border-color: color-mix(in srgb, var(--dt-purple) 55%, var(--dt-border));
+}
+
+.dt-hero-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dt-muted);
+  font-size: 12px;
+}
+
+.dt-button.dt-star {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: var(--dt-purple);
+  color: #fff;
+  text-decoration: none;
+}
+
+.dt-button.dt-star:hover {
+  filter: brightness(1.1);
+}
+
+.dt-home-stats {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.dt-home-stat {
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dt-home-stat:hover {
+  border-color: var(--dt-accent);
+}
+
+.dt-home-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+
+.dt-home-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--dt-border);
+  border-radius: 8px;
+  background: var(--dt-bg);
+  color: var(--dt-text);
+  text-decoration: none;
+}
+
+.dt-home-link:hover {
+  border-color: var(--dt-accent);
+  background: var(--dt-bg-hover);
+}
+
+.dt-home-link-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--dt-accent-soft);
+  color: var(--dt-accent);
+}
+
+.dt-home-link.bug .dt-home-link-icon {
+  background: color-mix(in srgb, var(--dt-danger) 14%, transparent);
+  color: var(--dt-danger);
+}
+
+.dt-home-link.idea .dt-home-link-icon {
+  background: color-mix(in srgb, var(--dt-warn) 16%, transparent);
+  color: var(--dt-warn);
+}
+
+.dt-home-link.npm .dt-home-link-icon,
+.dt-home-link.releases .dt-home-link-icon {
+  background: color-mix(in srgb, var(--dt-ok) 14%, transparent);
+  color: var(--dt-ok);
+}
+
+.dt-home-link-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dt-home-link-text b {
+  color: var(--dt-text-strong);
+}
+
+.dt-home-link-text small {
+  overflow: hidden;
+  color: var(--dt-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .dt-hero {
+    flex-wrap: wrap;
+    padding: 18px;
+  }
+
+  .dt-hero-logo {
+    width: 64px;
+    height: 64px;
+  }
+}

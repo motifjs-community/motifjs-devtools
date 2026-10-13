@@ -8,6 +8,9 @@
 
 ## What it shows
 
+- **Home.** The panel opens here: the DevTools, MotifJS and contract versions, where the panel is connected,
+  how many components, stores, services, routes and issues the app has (each opens its screen), and links to
+  the source code, the documentation, the release notes and npm, and to report a bug or share an idea.
 - **Elements.** The live component tree. Every element is a component; class and function components show
   by name, plain elements can be hidden with one button. Search by name or tag, `WAITING` / `HIDDEN`
   badges, and whether each component is in the document. The inspector lists props and the component's own
