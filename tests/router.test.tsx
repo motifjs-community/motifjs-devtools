@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { Application } from '@motifx/core';
 import type { Client, ClientEvent, ClientStatus } from '../src/client/client';
 import { DevtoolsModel } from '../src/panel/model/DevtoolsModel';
-import { RouterModel } from '../src/panel/model/RouterModel';
+import { RouterModel, matchesRoute, routeRows } from '../src/panel/model/RouterModel';
 import { RouterPage } from '../src/panel/pages/RouterPage';
 import { tick } from './helpers';
 
@@ -60,6 +60,32 @@ const nav = (requested: string, outcome: string, extra: Record<string, unknown> 
   at: Date.UTC(2026, 9, 13, 9, 30, 5, 120),
   ...extra,
 });
+
+const fn = (name: string) => ({ $motif: 'function', name });
+
+const ROUTES = [
+  {
+    path: '/',
+    fullPath: '/',
+    control: fn('AppShell'),
+    childs: [
+      { path: '/', fullPath: '/', redirect: '/dashboard' },
+      { path: '/dashboard', fullPath: '/dashboard', control: fn('Dashboard'), keepAlive: true },
+      { path: '/orders/{id}', fullPath: '/orders/{id}', control: fn('OrderPage'), onEnter: fn('onEnter') },
+      {
+        path: '/admin',
+        control: fn('AdminLayout'),
+        validate: fn('validate'),
+        onLeave: fn('onLeave'),
+        meta: { role: 'admin' },
+        childs: [
+          { path: 'users', control: fn('UsersPage') },
+          { path: 'lazy', control: { $motif: 'object', type: 'Promise', keys: 0 }, redirect: fn('pick') },
+        ],
+      },
+    ],
+  },
+];
 
 const PAGE = (): Page => ({
   routes: [{ path: '/', childs: [] }],
@@ -167,6 +193,48 @@ describe('Router', () => {
     connect();
     await settle();
     expect(calls).toEqual(expect.arrayContaining(['getRoutes', 'getRoute', 'getNavigations']));
+  });
+
+  it('builds the route tree with full paths, components, redirects and hooks', () => {
+    expect(routeRows(ROUTES).map((r) => `${'  '.repeat(r.depth)}${r.path} ${r.fullPath} ${r.control ?? '-'} ${r.redirect ?? '-'} ${r.hooks.join(',') || '-'}${r.keepAlive ? ' keep' : ''}`)).toEqual([
+      '/ / AppShell - -',
+      '  / / - /dashboard -',
+      '  /dashboard /dashboard Dashboard - - keep',
+      '  /orders/{id} /orders/{id} OrderPage - onEnter',
+      '  /admin /admin AdminLayout - validate,onLeave',
+      '    users /admin/users UsersPage - -',
+      '    lazy /admin/lazy Promise ƒ pick() -',
+    ]);
+  });
+
+  it('matches route patterns against addresses', () => {
+    expect(matchesRoute('/orders/{id}', '/orders/1042')).toBe(true);
+    expect(matchesRoute('/orders/:id', '/orders/1042?tab=2')).toBe(true);
+    expect(matchesRoute('/orders/{id}', '/orders')).toBe(false);
+    expect(matchesRoute('/', '/')).toBe(true);
+    expect(matchesRoute('/dashboard', '/settings')).toBe(false);
+  });
+
+  it('shows the route tree in its own tab and marks the chain of the current route', async () => {
+    const { root } = await render({ ...PAGE(), routes: ROUTES });
+    expect(root.querySelector('.dt-routes')).toBeNull();
+    const tabs = [...root.querySelectorAll('.dt-page-tabs button')] as HTMLButtonElement[];
+    expect(tabs.map(text)).toEqual(['Current', 'Routes 7']);
+    tabs[1].click();
+    await settle();
+    expect(root.querySelector('.dt-route-card')).toBeNull();
+    const nodes = [...root.querySelectorAll('.dt-route-node')];
+    expect(nodes.map((n) => text(n.querySelector('.dt-route-path')))).toEqual(['/', '/', '/dashboard', '/orders/{id}', '/admin', 'users', 'lazy']);
+    expect(nodes.map((n, i) => (n.classList.contains('active') ? i : -1)).filter((i) => i >= 0)).toEqual([0, 3]);
+    expect(nodes[3].classList.contains('current')).toBe(true);
+    expect([...nodes[3].querySelectorAll('.dt-route-tag')].map(text)).toEqual(['<OrderPage>', 'onEnter']);
+    (nodes[4].querySelector('.dt-route-row') as HTMLButtonElement).click();
+    await settle();
+    const detail = root.querySelectorAll('.dt-route-node')[4].querySelector('.dt-route-detail');
+    expect(terms(detail)).toContain('Full path /admin');
+    expect(terms(detail)).toContain('Hooks validate, onLeave');
+    expect(terms(detail)).toContain('Children 2');
+    expect(terms(detail)).toMatch(/Meta role\s*"admin"/);
   });
 
   it('says so when the app has no router', async () => {
