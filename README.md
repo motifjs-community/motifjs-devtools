@@ -21,6 +21,15 @@
 - **Reactivity.** Total effect runs, flushes, the last and the slowest flush, live effects, and a timeline of
   the last 200 flushes. A flush opens to the changes that started it and the effects that ran; an effect
   links to its component in Elements. Recording starts when the panel opens and can be paused or cleared.
+- **Performance.** The JS heap of the page, live components, components not in the tree and stores waiting for
+  garbage collection. Charts show the heap and the components outside the tree for up to the last 5 minutes,
+  sampled every 2 seconds, with navigations marked; a warning shows when the components outside the tree rose after
+  each of the last 3 navigations. Chrome and Edge report the heap and round it unless started with
+  `--enable-precise-memory-info`; other browsers show the counts only. The timeline puts navigations, reactivity
+  flushes, builds and disposals on lanes over the last 10 s, 30 s, 1 min or 5 min; the components built or disposed
+  together are one bar with their count and duration. Dragging across the lanes selects a range, and the event list
+  and the tables of the slowest components (by type, including the components inside), the longest flushes and the
+  longest navigations follow it. Recording starts when the panel opens and can be paused or cleared.
 - **Router.** The current route with its params and the paths along its chain, and the last 50 navigations
   the app recorded since devtools was enabled: the address shown, the address requested when a redirect or
   middleware changed it, the outcome (`done`, `skipped`, `cancelled`, `notFound`, `error`), the duration, the

@@ -1,0 +1,448 @@
+.dt-perf {
+  --dt-lane-navigation: var(--dt-purple);
+  --dt-lane-flush: var(--dt-accent);
+  --dt-lane-build: var(--dt-ok);
+  --dt-lane-dispose: var(--dt-warn);
+}
+
+.dt-perf-section {
+  margin-bottom: 16px;
+}
+
+.dt-card.warn {
+  border-top-color: var(--dt-warn);
+}
+
+.dt-card.warn span {
+  color: var(--dt-warn);
+}
+
+.dt-perf-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 14px;
+}
+
+.dt-perf-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dt-perf-chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dt-perf-chart-head b {
+  color: var(--dt-text-strong);
+  font-weight: 600;
+}
+
+.dt-perf-plot {
+  height: 110px;
+  border: 1px solid var(--dt-border);
+  border-radius: 6px;
+  background:
+    linear-gradient(var(--dt-border) 1px, transparent 1px) 0 0 / 100% 25%,
+    var(--dt-bg);
+  overflow: hidden;
+}
+
+.dt-chart-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.dt-chart-svg .line {
+  fill: none;
+  stroke: var(--dt-accent);
+  stroke-width: 1.6;
+  vector-effect: non-scaling-stroke;
+}
+
+.dt-chart-svg .area {
+  fill: color-mix(in srgb, var(--dt-accent) 14%, transparent);
+}
+
+.dt-chart-svg.outside .line {
+  stroke: var(--dt-purple);
+}
+
+.dt-chart-svg.outside .area {
+  fill: color-mix(in srgb, var(--dt-purple) 14%, transparent);
+}
+
+.dt-chart-svg.warn .line {
+  stroke: var(--dt-warn);
+}
+
+.dt-chart-svg.warn .area {
+  fill: color-mix(in srgb, var(--dt-warn) 16%, transparent);
+}
+
+.dt-chart-svg .marker {
+  stroke: var(--dt-muted);
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.6;
+}
+
+.dt-perf-warning {
+  margin: 0;
+  color: var(--dt-warn);
+  font-size: 11px;
+}
+
+.dt-perf-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dt-segment {
+  display: inline-flex;
+  border: 1px solid var(--dt-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.dt-segment button {
+  height: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-left: 1px solid var(--dt-border);
+  background: var(--dt-bg);
+  color: var(--dt-muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.dt-segment button:first-child {
+  border-left: 0;
+}
+
+.dt-segment button.active {
+  background: var(--dt-accent-soft);
+  color: var(--dt-accent);
+  font-weight: 600;
+}
+
+.dt-tl {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  padding: 12px 14px 4px;
+}
+
+.dt-tl-labels {
+  display: flex;
+  flex-direction: column;
+}
+
+.dt-tl-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  color: var(--dt-muted);
+  font-size: 11px;
+}
+
+.dt-tl-label::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--lane);
+}
+
+.dt-tl-tracks {
+  position: relative;
+  border-left: 1px solid var(--dt-border);
+  border-right: 1px solid var(--dt-border);
+  cursor: crosshair;
+  user-select: none;
+}
+
+.dt-tl-lane {
+  position: relative;
+  height: 26px;
+  border-bottom: 1px dashed var(--dt-border);
+}
+
+.dt-tl-lane:last-of-type {
+  border-bottom: 0;
+}
+
+.dt-tl-bar {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  min-width: 3px;
+  border-radius: 2px;
+  background: var(--lane);
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+.dt-tl-bar:hover,
+.dt-tl-bar.open {
+  opacity: 1;
+  outline: 2px solid color-mix(in srgb, var(--lane) 45%, transparent);
+}
+
+.dt-perf .navigation {
+  --lane: var(--dt-lane-navigation);
+}
+
+.dt-perf .flush {
+  --lane: var(--dt-lane-flush);
+}
+
+.dt-perf .build {
+  --lane: var(--dt-lane-build);
+}
+
+.dt-perf .dispose {
+  --lane: var(--dt-lane-dispose);
+}
+
+.dt-tl-range {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--dt-accent);
+  border-right: 1px solid var(--dt-accent);
+  background: var(--dt-accent-soft);
+  pointer-events: none;
+}
+
+.dt-tl-axis {
+  position: relative;
+  height: 20px;
+}
+
+.dt-tl-axis span {
+  position: absolute;
+  top: 4px;
+  color: var(--dt-muted);
+  font: 10px var(--dt-mono);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.dt-tl-axis span:first-child {
+  transform: none;
+}
+
+.dt-tl-axis span:last-child {
+  transform: translateX(-100%);
+}
+
+.dt-tl-selection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--dt-border);
+  color: var(--dt-muted);
+}
+
+.dt-tl-selection b {
+  color: var(--dt-text-strong);
+  font-weight: 500;
+}
+
+.dt-perf-row {
+  display: grid;
+  grid-template-columns: 110px 92px minmax(0, 2.4fr) 80px 1fr;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--dt-border);
+  background: transparent;
+  color: var(--dt-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dt-perf-row:hover {
+  background: var(--dt-bg-hover);
+}
+
+.dt-perf-row.dt-table-head:hover {
+  background: transparent;
+}
+
+.dt-perf-row b {
+  color: var(--dt-text-strong);
+}
+
+.dt-perf-what {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dt-perf-entry.open .dt-perf-row {
+  background: var(--dt-bg-active);
+}
+
+.dt-kind {
+  justify-self: start;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lane) 14%, transparent);
+  color: var(--lane);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.dt-perf-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px 12px;
+  border-bottom: 1px solid var(--dt-border);
+  background: var(--dt-bg);
+}
+
+.dt-perf-detail small {
+  color: var(--dt-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.dt-perf-facts {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.dt-perf-facts div {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.dt-perf-facts dt {
+  color: var(--dt-muted);
+}
+
+.dt-perf-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.dt-perf-table {
+  min-width: 0;
+}
+
+.dt-perf-trow {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) 0.7fr 1fr 1fr;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--dt-border);
+}
+
+.dt-perf-trow:last-child {
+  border-bottom: 0;
+}
+
+.dt-perf-trow > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dt-perf-trow b {
+  color: var(--dt-text-strong);
+}
+
+.dt-perf-detail .dt-perf-trow {
+  padding: 0;
+}
+
+.dt-perf-slowest {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 12px;
+}
+
+.dt-perf-top {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--dt-border);
+  background: transparent;
+  color: var(--dt-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dt-perf-top:last-child {
+  border-bottom: 0;
+}
+
+.dt-perf-top:hover {
+  background: var(--dt-bg-hover);
+}
+
+.dt-perf-top > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dt-perf-top b {
+  color: var(--dt-text-strong);
+}
+
+@media (max-width: 900px) {
+  .dt-perf-slowest {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .dt-perf-charts {
+    grid-template-columns: 1fr;
+  }
+
+  .dt-tl {
+    grid-template-columns: 70px minmax(0, 1fr);
+  }
+
+  .dt-perf-row {
+    grid-template-columns: 90px 80px minmax(0, 1fr) 70px;
+  }
+
+  .dt-perf-row > :last-child {
+    display: none;
+  }
+
+  .dt-perf-head-actions .dt-live {
+    display: none;
+  }
+}

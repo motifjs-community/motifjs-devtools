@@ -6,7 +6,7 @@ import { StoresModel } from '../model/StoresModel';
 
 const integer = (value: number | undefined) => (value === undefined ? '–' : value.toLocaleString('en-US'));
 
-const triggerText = (trigger: FlushTrigger, stores: StoresModel | undefined) => {
+export const triggerText = (trigger: FlushTrigger, stores: StoresModel | undefined) => {
   if (trigger.store !== undefined) {
     const name = stores?.nameOf(trigger.store.id) ?? `store#${trigger.store.id}`;
     return [name, ...trigger.store.path, trigger.key].join('.');

@@ -8,6 +8,7 @@ import {
   type BridgeMessage,
   type BridgeRequest,
   type BridgeStatus,
+  type PageMemory,
 } from './protocol';
 import { createPicker, type Picker } from './picker';
 import { toTransfer } from './serialize';
@@ -52,6 +53,14 @@ const routeShape = (value: unknown): unknown =>
       })
     : toTransfer(value, 3);
 
+const pageTime = () => (typeof performance !== 'undefined' && typeof performance.timeOrigin === 'number' ? performance.timeOrigin + performance.now() : Date.now());
+
+const readMemory = (): PageMemory | null => {
+  const memory = (globalThis as { performance?: { memory?: { usedJSHeapSize?: unknown; totalJSHeapSize?: unknown; jsHeapSizeLimit?: unknown } } }).performance?.memory;
+  if (memory === undefined || typeof memory.usedJSHeapSize !== 'number') return null;
+  return { used: memory.usedJSHeapSize, total: Number(memory.totalJSHeapSize) || 0, limit: Number(memory.jsHeapSizeLimit) || 0 };
+};
+
 const SHAPES: Record<string, (value: unknown) => unknown> = {
   getRoutes: routeShape,
   getStores: (value) =>
@@ -84,6 +93,7 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
   const transferEvent = (event: { type: string; payload?: unknown }) => ({
     type: event.type,
     payload: toTransfer(event.payload, event.type === 'reactivity:flush' ? 6 : 4),
+    time: pageTime(),
   });
 
   const pickerOf = () => {
@@ -139,6 +149,7 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
     async handle(request) {
       if (disposed) return;
       check();
+      if (request.method === 'getMemory') return reply(request.id, true, readMemory());
       if (OWN_METHODS.has(request.method)) {
         const own = pickerOf();
         if (own === null || api === null) return reply(request.id, false, own === null ? 'unknown-method' : 'not-connected');

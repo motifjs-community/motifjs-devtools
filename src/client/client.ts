@@ -6,7 +6,7 @@ export interface Port {
 }
 
 export type ClientStatus = Omit<BridgeStatus, 'channel' | 'kind'>;
-export type ClientEvent = { type: string; payload?: unknown };
+export type ClientEvent = { type: string; payload?: unknown; time?: number };
 
 export interface Client {
   readonly status: ClientStatus;
