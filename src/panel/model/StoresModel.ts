@@ -11,7 +11,7 @@ export type StoreHolder =
   | { kind: 'component'; path: number[]; type: string; field: string }
   | { kind: 'service'; token: string; lifetime: string; field: string | null };
 
-export type StoreItem = { id: number; name: string; type: StoreType; value: unknown; stale?: boolean; released?: boolean; holders: StoreHolder[] };
+export type StoreItem = { id: number; name: string; file?: string; type: StoreType; value: unknown; stale?: boolean; released?: boolean; holders: StoreHolder[] };
 
 export type StoreChange = { path: string[]; key: string; at: number };
 

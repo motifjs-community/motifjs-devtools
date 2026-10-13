@@ -28,7 +28,8 @@
   opens to its details, an error to its name, cause and stack. The list can be filtered by level, and the menu
   shows how many there are.
 - **Stores.** Every `reactive`, `useModel`, signal and computed the app keeps, named after the component or
-  service field that holds it (`Settings.prefs`, `ThemeService.theme`), with its type and a short value. A store
+  service field that holds it (`Settings.prefs`, `ThemeService.theme`) or, for a module store, after its variable
+  and file (`cart`, `src/stores/cart.ts`), with its type and a short value. A store
   opens to who keeps it (a component links to Elements), the last field that changed and its value one level at
   a time; a string, number or boolean value can be edited in place. The list can be filtered by type and follows the app as stores are created and components go away;
   a store no longer kept by a component or service is set aside under "Show released" until the browser collects
@@ -69,7 +70,9 @@ and size are remembered in `localStorage` under `motif-devtools:dock`. Closing t
 panel back to where it was docked.
 
 Stores created at module level (`export const cart = reactive({ … })`) exist before `useDevelopment(true)`
-runs. To list them too, set the development flag before the app code:
+runs. While developing with `@motifx/compiler`, top-level stores are named by the compiler and listed with
+their variable and file. Stores created early in other ways are listed when the development flag is set
+before the app code:
 
 ```html
 <script>globalThis.__MOTIF_DEV__ = true;</script>
