@@ -37,7 +37,7 @@ const METHODS = new Set<string>([...READ_METHODS, ...WRITE_METHODS]);
 const OWN_METHODS = new Set<string>(PAGE_METHODS);
 const DEPTH: Record<string, number> = { getTree: Infinity, getRoutes: 8, inspect: 6, readExtension: 6, getWarnings: 6, getErrors: 8 };
 
-type StoreRecord = { id: unknown; name: unknown; type: unknown; value: unknown; stale?: unknown; holders: unknown };
+type StoreRecord = { id: unknown; name: unknown; type: unknown; value: unknown; stale?: unknown; released?: unknown; holders: unknown };
 
 const SHAPES: Record<string, (value: unknown) => unknown> = {
   getStores: (value) =>
@@ -45,6 +45,7 @@ const SHAPES: Record<string, (value: unknown) => unknown> = {
       ? value.map((store: StoreRecord) => {
           const out: Record<string, unknown> = { id: store.id, name: store.name, type: store.type, value: toTransfer(store.value, 2), holders: toTransfer(store.holders, 4) };
           if (store.stale !== undefined) out.stale = store.stale;
+          if (store.released !== undefined) out.released = store.released;
           return out;
         })
       : toTransfer(value, 4),

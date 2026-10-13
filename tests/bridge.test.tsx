@@ -98,6 +98,7 @@ describe('bridge', () => {
     const store = response.value.find((s) => s.holders.some((h) => h.field === 'state'))!;
     expect(store.holders).toEqual([{ kind: 'component', path: [0], type: 'Counter', field: 'state' }]);
     expect(store.value).toEqual({ count: 0 });
+    expect('released' in store).toBe(false);
   });
 
   it('rejects methods outside the allow list', async () => {

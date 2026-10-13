@@ -11,7 +11,7 @@ export type StoreHolder =
   | { kind: 'component'; path: number[]; type: string; field: string }
   | { kind: 'service'; token: string; lifetime: string; field: string | null };
 
-export type StoreItem = { id: number; name: string; type: StoreType; value: unknown; stale?: boolean; holders: StoreHolder[] };
+export type StoreItem = { id: number; name: string; type: StoreType; value: unknown; stale?: boolean; released?: boolean; holders: StoreHolder[] };
 
 export type StoreChange = { path: string[]; key: string; at: number };
 
@@ -34,11 +34,13 @@ export function summaryOf(value: unknown): string {
 const KEY_SEP = '\u0002';
 const PATH_SEP = '\u0001';
 const LOAD_DELAY = 300;
+const RELOAD_EVENTS = new Set(['stores:changed', 'tree:changed', 'component:disposed']);
 
 export class StoresModel {
   readonly state = reactive({
     stores: [] as StoreItem[],
     filter: 'all' as StoreTypeFilter,
+    showReleased: false,
     expanded: null as number | null,
     values: {} as Record<string, ValueNode>,
     roots: {} as Record<number, unknown>,
@@ -63,6 +65,10 @@ export class StoresModel {
         if (status.connected) void this.load();
       }),
       client.onEvent((event) => {
+        if (RELOAD_EVENTS.has(event.type)) {
+          if (this.visible()) this.schedule();
+          return;
+        }
         if (event.type !== 'reactivity:flush') return;
         const triggers = ((event.payload as { triggers?: FlushTrigger[] } | undefined)?.triggers ?? []).filter((t) => t.store !== undefined);
         if (triggers.length === 0) return;
@@ -77,9 +83,26 @@ export class StoresModel {
     );
   }
 
+  get liveStores() {
+    return this.state.stores.filter((s) => s.released !== true);
+  }
+
+  get releasedCount() {
+    return this.state.stores.length - this.liveStores.length;
+  }
+
   get visibleStores() {
-    const filter = this.state.filter;
-    return filter === 'all' ? this.state.stores : this.state.stores.filter((s) => s.type === filter);
+    return this.state.stores.filter((s) => this.shows(s));
+  }
+
+  shows(item: StoreItem | undefined) {
+    if (item === undefined) return false;
+    if (item.released === true && !this.state.showReleased) return false;
+    return this.state.filter === 'all' || this.state.filter === item.type;
+  }
+
+  toggleReleased() {
+    this.state.showReleased = !this.state.showReleased;
   }
 
   nameOf(id: number): string | null {

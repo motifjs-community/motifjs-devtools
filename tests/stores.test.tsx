@@ -13,7 +13,7 @@ const settle = async () => {
 
 type Call = { method: string; args: unknown[] };
 
-const STORES = () => [
+const STORES = (): Record<string, unknown>[] => [
   { id: 1, name: 'reactive', type: 'reactive', value: { orders: { $motif: 'array', length: 2 }, signedIn: false }, holders: [] },
   { id: 2, name: 'Cart', type: 'reactive', value: { items: [], total: 4 }, holders: [{ kind: 'component', path: [0, 2], type: 'CartView', field: 'cart' }] },
   { id: 3, name: 'signal', type: 'signal', value: 'dark', holders: [{ kind: 'service', token: 'ThemeService', lifetime: 'singleton', field: 'theme' }] },
@@ -187,6 +187,34 @@ describe('Stores', () => {
     await settle();
     expect(calls.some((c) => c.method === 'setStoreValue')).toBe(false);
     expect(text(detail.querySelector('.dt-store-error'))).toBe('Not a number');
+  });
+
+  it('loads again when stores are created or components go away', async () => {
+    const { emit, calls } = await render();
+    for (const type of ['stores:changed', 'tree:changed', 'component:disposed']) {
+      calls.length = 0;
+      emit({ type, payload: {} });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await settle();
+      expect(calls.map((c) => c.method), type).toContain('getStores');
+    }
+  });
+
+  it('hides released stores until asked to show them', async () => {
+    const stores = [...STORES(), { id: 5, name: 'reactive', type: 'reactive', value: { open: false }, holders: [], released: true }];
+    const { root } = await render(stores);
+    expect(rows(root).map((row) => text(row.querySelector('.dt-store-name')))).not.toContain('reactive#5');
+    expect(text(root.querySelector('.dt-store-total'))).toBe('4');
+    const toggle = root.querySelector('.dt-released-toggle') as HTMLButtonElement;
+    expect(text(toggle)).toBe('Show released (1)');
+    toggle.click();
+    await settle();
+    const released = rows(root).find((row) => text(row.querySelector('.dt-store-name')) === 'reactive#5')!;
+    expect(released.classList.contains('released')).toBe(true);
+    (released.querySelector('.dt-store-row') as HTMLButtonElement).click();
+    await settle();
+    expect(text(released.querySelector('.dt-store-holders'))).toBe('Not kept by a component or service anymore');
+    expect(text(root.querySelector('.dt-released-toggle'))).toBe('Hide released');
   });
 
   it('loads again when the page connects', async () => {
