@@ -3,15 +3,18 @@ import { createClient } from '../client/client';
 import { windowPort } from '../transport/window';
 import { DevtoolsModel } from './model/DevtoolsModel';
 import { ReactivityModel } from './model/ReactivityModel';
+import { RouterModel } from './model/RouterModel';
 import { Shell } from './Shell';
 import './styles/panel.css';
 import './styles/elements.css';
 import './styles/reactivity.css';
+import './styles/router.css';
 
 const peer = () => (window.opener as Window | null) ?? (window.parent !== window ? window.parent : null);
 const client = createClient(windowPort(window, peer));
 const model = new DevtoolsModel(client);
 const reactivity = new ReactivityModel(client);
+const router = new RouterModel(client);
 
 effect(() => {
   const theme = model.state.theme;
@@ -22,4 +25,5 @@ effect(() => {
 const builder = Application.CreateBuilder();
 builder.services.addSingleton(DevtoolsModel, { useValue: model });
 builder.services.addSingleton(ReactivityModel, { useValue: reactivity });
+builder.services.addSingleton(RouterModel, { useValue: router });
 builder.build().run('#app', new Shell());

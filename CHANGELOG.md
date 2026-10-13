@@ -14,3 +14,4 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Elements: component tree, inspector, prop values opened one level at a time, class and visibility writes.
 - Select a component in the page and highlight components from the tree.
 - Reactivity: run and flush counters, flush timeline with triggers and effects, links from effects to Elements.
+- Router: current route with params and chain, recent navigations with outcome, duration and details, outcome filter.

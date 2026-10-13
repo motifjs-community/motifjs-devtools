@@ -1,4 +1,4 @@
-import { Application, Component, reactive } from '@motifx/core';
+import { Application, Component, RouterView, reactive, useNavigation, type RouteItem } from '@motifx/core';
 import { mount } from '@motifx-community/devtools';
 
 const store = reactive({
@@ -12,6 +12,7 @@ const store = reactive({
     { id: 1043, customer: 'Linus', total: 64 },
   ],
   signedIn: false,
+  unsaved: false,
 });
 
 function StatCard(props: { stat: { title: string; value: number; trend: number } }) {
@@ -65,27 +66,63 @@ class Dashboard extends Component<HTMLElement> {
   }
 }
 
+function OrderPage() {
+  const nav = useNavigation();
+  return <h2>{`Order #${nav.params.id}`}</h2>;
+}
+
+function Settings() {
+  return (
+    <label>
+      <input type="checkbox" checked={() => store.unsaved} onchange={() => (store.unsaved = !store.unsaved)} />
+      Unsaved changes
+    </label>
+  );
+}
+
 function AppShell() {
   return (
     <div>
       <header>
         <b>Motif App</b>
         <nav>
-          <a href="#dashboard">Dashboard</a>
-          <a href="#orders">Orders</a>
+          <a rel="router" href="/dashboard">Dashboard</a>
+          <a rel="router" href="/orders/1042">Order 1042</a>
+          <a rel="router" href="/settings">Settings</a>
+          <a rel="router" href="/login">Login</a>
+          <a rel="router" href="/missing">Missing</a>
         </nav>
         <button type="button" onclick={() => (store.signedIn = !store.signedIn)}>Toggle sign-in</button>
         <UserMenu x-wait={() => !store.signedIn} />
       </header>
       <main>
-        <Dashboard />
+        <RouterView />
       </main>
     </div>
   );
 }
 
+const routes: RouteItem[] = [
+  {
+    path: '/',
+    control: AppShell,
+    childs: [
+      { path: '/', redirect: '/dashboard' },
+      { path: '/dashboard', control: Dashboard },
+      { path: '/orders/{id}', control: OrderPage },
+      {
+        path: '/settings',
+        control: Settings,
+        onLeave: () => (store.unsaved ? { cancel: true, reason: 'unsaved changes' } : undefined),
+      },
+      { path: '/login', redirect: '/dashboard' },
+    ],
+  },
+];
+
 const app = Application.CreateBuilder().build();
 app.useDevelopment(true);
-app.run('#app', <AppShell />);
+app.useRouter({ routes, mode: 'hash' });
+app.run('#app');
 
 mount({ src: './panel.html', open: true });

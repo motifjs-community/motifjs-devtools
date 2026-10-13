@@ -1,15 +1,9 @@
 import { Component, FromService } from '@motifx/core';
-import { formatValue } from '../format';
+import { formatClock as clock, formatMs as ms, formatValue } from '../format';
 import { DevtoolsModel } from '../model/DevtoolsModel';
 import { ReactivityModel, type Flush, type FlushEffect, type FlushTrigger } from '../model/ReactivityModel';
 
 const integer = (value: number | undefined) => (value === undefined ? '–' : value.toLocaleString('en-US'));
-const ms = (value: number | undefined) => (value === undefined ? '–' : `${value < 10 ? value.toFixed(2) : value.toFixed(1)} ms`);
-const pad = (value: number, size = 2) => String(value).padStart(size, '0');
-const clock = (at: number) => {
-  const d = new Date(at);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
-};
 
 const triggerText = (trigger: FlushTrigger) => {
   const target = trigger.target as { kind?: string; type?: string } | null;

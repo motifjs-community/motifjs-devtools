@@ -67,3 +67,12 @@ export function formatValue(value: unknown): Formatted {
 export const pathKey = (path: readonly number[]) => path.join('.');
 
 export const formatPath = (path: readonly number[] | null) => (path === null ? 'detached' : `[${path.join(', ')}]`);
+
+export const formatMs = (value: number | undefined) => (value === undefined ? '–' : `${value < 10 ? value.toFixed(2) : value.toFixed(1)} ms`);
+
+const pad = (value: number, size = 2) => String(value).padStart(size, '0');
+
+export const formatClock = (at: number) => {
+  const d = new Date(at);
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+};
