@@ -20,6 +20,7 @@ const TREE = node([], 'Component', 'div', [
 const INSPECTION = {
   ...node([0, 1], 'StatCard', 'article'),
   props: { class: 'root-only' },
+  fields: { state: { kind: 'object', type: 'Object', keys: 2 }, title: 'Orders' },
   functionProps: { indexkey: { kind: 'function', name: 'indexkey' }, runover: { kind: 'object', type: 'Object', keys: 0 }, childs: { kind: 'array', length: 0 }, title: 'Total revenue', trend: 12.5, broken: { kind: 'object', type: 'Object', keys: 1 }, stat: { kind: 'object', type: 'Object', keys: 5 }, format: { kind: 'function', name: 'formatCurrency' } },
   bindings: [{ kind: 'property', property: 'textContent', active: true }, { kind: 'class', active: false }],
   events: [{ name: 'click', dom: true, handler: { kind: 'function', name: 'onClick' } }],
@@ -146,6 +147,21 @@ describe('ElementsPage', () => {
     await page.model.toggleValue(['stat']);
     await tick();
     expect(page.model.state.values).toEqual({});
+  });
+
+  it('lists the fields of a component and opens them through readValue with the fields source', async () => {
+    const { page, root, calls } = await render();
+    page.model.select(page.model.state.rows[4]);
+    for (let i = 0; i < 4; i++) await tick();
+    const fields = root.querySelector('.dt-fields') as HTMLElement;
+    expect(fields.textContent).toContain('title');
+    expect(fields.textContent).toContain('"Orders"');
+    const stateRow = [...fields.querySelectorAll('.dt-prop-row')].find((row) => row.textContent?.includes('state')) as HTMLElement;
+    (stateRow.querySelector('.dt-caret') as HTMLButtonElement).click();
+    for (let i = 0; i < 4; i++) await tick();
+    expect(calls.find((c) => c.method === 'readValue')?.args).toEqual([[0, 1], 'fields', ['state']]);
+    expect(fields.textContent).toContain('id');
+    expect(root.querySelector('.dt-kv')?.textContent).not.toContain('… 3 more');
   });
 
   it('shows the error when a value cannot be read', async () => {

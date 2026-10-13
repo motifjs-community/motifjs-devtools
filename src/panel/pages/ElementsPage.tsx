@@ -1,11 +1,14 @@
 import { Component, FromService } from '@motifx/core';
-import { formatPath, formatValue } from '../format';
+import { formatPath } from '../format';
 import { DevtoolsModel } from '../model/DevtoolsModel';
-import { ElementsModel, valueId, type Row } from '../model/ElementsModel';
+import { ElementsModel, type Row } from '../model/ElementsModel';
+import { PropNode, Value } from '../ValueTree';
 
 const visibilityGlyph = (visible: boolean | undefined) => (visible ? '◉' : '○');
 const activeText = (active: boolean | null) => (active === false ? 'inactive' : 'active');
 const eventKind = (dom: boolean) => (dom ? 'dom' : 'component');
+
+const isGetter = (value: unknown) => typeof value === 'object' && value !== null && (value as { kind?: unknown }).kind === 'getter';
 
 const FRAMEWORK_PROPS = new Set(['indexkey', 'runover', 'childs', 'initializeComponent', 'oninitializeComponent', 'key', 'ref', 'options', 'transition']);
 
@@ -35,56 +38,6 @@ function TreeRow(props: { row: Row; model: ElementsModel }) {
   );
 }
 
-function Value(props: { value: unknown }) {
-  const formatted = formatValue(props.value);
-  return <span class={`dt-value ${formatted.kind}`}>{formatted.text}</span>;
-}
-
-function PropNode(props: { name: string; value: unknown; keys: string[]; model: ElementsModel; getter?: boolean }) {
-  const { model, keys } = props;
-  const id = valueId(keys);
-  const shown = props.getter ? { kind: 'getter' } : props.value;
-  const expandable = !props.getter && formatValue(props.value).kind === 'object';
-  const node = () => model.state.values[id];
-  const entries = () => {
-    const value = node();
-    return value !== undefined && 'entries' in value ? value.entries : [];
-  };
-  const more = () => {
-    const value = node();
-    return value !== undefined && 'entries' in value ? value.total - value.entries.length : 0;
-  };
-  const error = () => {
-    const value = node();
-    return value !== undefined && 'error' in value ? value.error : '';
-  };
-  return (
-    <div class="dt-prop">
-      <div class="dt-prop-row" style={`--level: ${keys.length - 1}`}>
-        <button
-          type="button"
-          class={() => (expandable ? (node() !== undefined ? 'dt-caret open' : 'dt-caret') : 'dt-caret leaf')}
-          aria-label="Expand value"
-          onclick={() => {
-            if (expandable) void model.toggleValue(keys);
-          }}
-        ></button>
-        <span class="dt-prop-key">{props.name}</span>
-        <Value value={shown} />
-      </div>
-      <div class="dt-prop-children" x-display={() => node() !== undefined}>
-        {entries().map((entry) => (
-          <PropNode key={entry.key} name={entry.key} value={entry.value} getter={entry.getter} keys={[...keys, entry.key]} model={model} />
-        ))}
-        <div class="dt-more" style={`--level: ${keys.length}`} x-display={() => more() > 0}>{() => `… ${more()} more`}</div>
-        <div class="dt-more dt-error" style={`--level: ${keys.length}`} x-display={() => error() !== ''}>
-          {() => error()}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function Section(props: { title: string; count: () => number }) {
   return (
     <summary>
@@ -106,6 +59,7 @@ class Inspector extends Component<HTMLElement> {
     const m = this.props.model;
     const data = () => m.state.inspection;
     const props = () => Object.entries(data()?.functionProps ?? data()?.props ?? {}).filter(([key]) => !FRAMEWORK_PROPS.has(key));
+    const fields = () => Object.entries(data()?.fields ?? {});
     const classes = () => [...(data()?.classes.static ?? []), ...(data()?.classes.reactive ?? []).flatMap((r) => r.classes)];
     return (
       <>
@@ -145,7 +99,15 @@ class Inspector extends Component<HTMLElement> {
               <Section title="Props" count={() => props().length} />
               <div class="dt-kv">
                 {props().map(([key, value]) => (
-                  <PropNode key={key} name={key} value={value} keys={[key]} model={m} />
+                  <PropNode key={key} name={key} value={value} keys={[key]} source={m.propsSource} />
+                ))}
+              </div>
+            </details>
+            <details open>
+              <Section title="Fields" count={() => fields().length} />
+              <div class="dt-kv dt-fields">
+                {fields().map(([key, value]) => (
+                  <PropNode key={key} name={key} value={value} getter={isGetter(value)} keys={[key]} source={m.fieldsSource} />
                 ))}
               </div>
             </details>

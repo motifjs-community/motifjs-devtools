@@ -1,0 +1,164 @@
+.dt-store-card .dt-route-icon {
+  background: color-mix(in srgb, var(--dt-purple) 16%, transparent);
+  color: var(--dt-purple);
+}
+
+.dt-store-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 2fr) 0.8fr minmax(0, 1.4fr) auto 16px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 46px;
+  padding: 6px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--dt-border);
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--dt-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dt-store-row:hover {
+  background: var(--dt-bg-hover);
+}
+
+.dt-store-entry.changed .dt-store-row {
+  border-left-color: var(--dt-accent);
+}
+
+.dt-store-entry.open .dt-store-row {
+  background: var(--dt-bg-active);
+}
+
+.dt-store-entry.open .dt-chevron {
+  transform: rotate(90deg);
+}
+
+.dt-store-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dt-store-name b {
+  overflow: hidden;
+  color: var(--dt-text-strong);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dt-store-name small {
+  color: var(--dt-muted);
+  font: 10px var(--dt-mono);
+}
+
+.dt-store-type {
+  font-size: 11px;
+  color: var(--dt-accent);
+}
+
+.dt-store-type.signal {
+  color: var(--dt-purple);
+}
+
+.dt-store-type.computed {
+  color: var(--dt-ok);
+}
+
+.dt-store-summary {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dt-store-stale {
+  padding: 0 5px;
+  border: 1px solid var(--dt-warn);
+  border-radius: 3px;
+  color: var(--dt-warn);
+  font: 700 9px/15px var(--dt-font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dt-store-detail {
+  padding: 10px 14px 12px 66px;
+  border-bottom: 1px solid var(--dt-border);
+  background: var(--dt-bg);
+}
+
+.dt-store-detail dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 0 0 8px;
+}
+
+.dt-store-detail dt {
+  color: var(--dt-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 20px;
+  text-transform: uppercase;
+}
+
+.dt-store-detail dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  line-height: 20px;
+}
+
+.dt-store-root {
+  padding: 4px 0;
+  font-family: var(--dt-mono);
+}
+
+.dt-store-error {
+  margin-top: 6px;
+  color: var(--dt-danger);
+  font-size: 11px;
+}
+
+.dt-value.editable {
+  border-bottom: 1px dashed transparent;
+  cursor: text;
+}
+
+.dt-value.editable:hover {
+  border-bottom-color: currentColor;
+}
+
+.dt-edit {
+  min-width: 120px;
+  height: 20px;
+  padding: 0 4px;
+  border: 1px solid var(--dt-accent);
+  border-radius: 3px;
+  background: var(--dt-bg);
+  color: var(--dt-text-strong);
+  font: 11px var(--dt-mono);
+}
+
+@media (max-width: 640px) {
+  .dt-store-row {
+    grid-template-columns: 28px minmax(0, 1fr) auto 16px;
+  }
+
+  .dt-store-summary,
+  .dt-store-stale {
+    display: none;
+  }
+
+  .dt-store-detail {
+    padding-left: 14px;
+  }
+}

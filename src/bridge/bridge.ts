@@ -37,6 +37,19 @@ const METHODS = new Set<string>([...READ_METHODS, ...WRITE_METHODS]);
 const OWN_METHODS = new Set<string>(PAGE_METHODS);
 const DEPTH: Record<string, number> = { getTree: Infinity, getRoutes: 8, inspect: 6, readExtension: 6, getWarnings: 6, getErrors: 8 };
 
+type StoreRecord = { id: unknown; name: unknown; type: unknown; value: unknown; stale?: unknown; holders: unknown };
+
+const SHAPES: Record<string, (value: unknown) => unknown> = {
+  getStores: (value) =>
+    Array.isArray(value)
+      ? value.map((store: StoreRecord) => {
+          const out: Record<string, unknown> = { id: store.id, name: store.name, type: store.type, value: toTransfer(store.value, 2), holders: toTransfer(store.holders, 4) };
+          if (store.stale !== undefined) out.stale = store.stale;
+          return out;
+        })
+      : toTransfer(value, 4),
+};
+
 export function createBridge({ send, host = globalThis, interval = 250, picker: withPicker = typeof document !== 'undefined' }: BridgeOptions): Bridge {
   let api: Contract | null = null;
   let picker: Picker | null = null;
@@ -123,7 +136,8 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
       if (typeof method !== 'function') return reply(request.id, false, 'unknown-method');
       try {
         const value = await method.apply(api, Array.isArray(request.args) ? request.args : []);
-        reply(request.id, true, toTransfer(value, DEPTH[request.method] ?? 4));
+        const shape = SHAPES[request.method];
+        reply(request.id, true, shape !== undefined ? shape(value) : toTransfer(value, DEPTH[request.method] ?? 4));
       } catch (error) {
         reply(request.id, false, error instanceof Error ? error.message : error);
       }

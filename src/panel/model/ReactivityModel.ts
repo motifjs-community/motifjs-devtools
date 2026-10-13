@@ -2,7 +2,7 @@ import { reactive } from '@motifx/core';
 import type { Client } from '../../client/client';
 
 export type FlushEffect = { path: number[] | null; type: string | null; tag: string | null; kind: string; runs: number };
-export type FlushTrigger = { target: unknown; key: string; count: number };
+export type FlushTrigger = { target: unknown; key: string; count: number; store?: { id: number; path: string[] } };
 
 export type Flush = {
   id: number;

@@ -2,10 +2,15 @@ import { Component, FromService } from '@motifx/core';
 import { formatClock as clock, formatMs as ms, formatValue } from '../format';
 import { DevtoolsModel } from '../model/DevtoolsModel';
 import { ReactivityModel, type Flush, type FlushEffect, type FlushTrigger } from '../model/ReactivityModel';
+import { StoresModel } from '../model/StoresModel';
 
 const integer = (value: number | undefined) => (value === undefined ? '–' : value.toLocaleString('en-US'));
 
-const triggerText = (trigger: FlushTrigger) => {
+const triggerText = (trigger: FlushTrigger, stores: StoresModel | undefined) => {
+  if (trigger.store !== undefined) {
+    const name = stores?.nameOf(trigger.store.id) ?? `store#${trigger.store.id}`;
+    return [name, ...trigger.store.path, trigger.key].join('.');
+  }
   const target = trigger.target as { kind?: string; type?: string } | null;
   const owner = target !== null && typeof target === 'object' && target.kind === 'object' ? target.type : formatValue(trigger.target).text;
   return `${owner}.${trigger.key}`;
@@ -26,8 +31,8 @@ function StatCard(props: { tone: string; label: string; value: () => string; not
   );
 }
 
-function FlushRow(props: { flush: Flush; model: ReactivityModel; devtools: DevtoolsModel }) {
-  const { flush, model, devtools } = props;
+function FlushRow(props: { flush: Flush; model: ReactivityModel; devtools: DevtoolsModel; stores: StoresModel | undefined }) {
+  const { flush, model, devtools, stores } = props;
   const open = () => model.state.expanded === flush.id;
   const width = () => {
     const max = model.maxDuration;
@@ -50,7 +55,7 @@ function FlushRow(props: { flush: Flush; model: ReactivityModel; devtools: Devto
           <ul class="dt-list">
             {flush.triggers.map((trigger, index) => (
               <li key={index}>
-                <span class="dt-mono">{triggerText(trigger)}</span>
+                <span class="dt-mono">{() => triggerText(trigger, stores)}</span>
                 <span class="dt-fill"></span>
                 <span class="dt-muted">{`×${trigger.count}`}</span>
               </li>
@@ -89,6 +94,7 @@ export class ReactivityPage extends Component<HTMLElement> {
   static override elementTag = 'section';
   devtools = FromService(DevtoolsModel)!;
   model = FromService(ReactivityModel)!;
+  stores = FromService(StoresModel);
 
   override onConfigured() {
     this.class.add('dt-profile');
@@ -145,7 +151,7 @@ export class ReactivityPage extends Component<HTMLElement> {
             No flush recorded yet. Change some state in the app.
           </div>
           {m.state.flushes.map((flush) => (
-            <FlushRow key={flush.id} flush={flush} model={m} devtools={d} />
+            <FlushRow key={flush.id} flush={flush} model={m} devtools={d} stores={this.stores} />
           ))}
         </div>
       </>
