@@ -5,6 +5,7 @@ import { ICONS } from './icons';
 import type { DockPosition } from '../bridge/protocol';
 import { DevtoolsModel, type Section } from './model/DevtoolsModel';
 import { ElementsPage } from './pages/ElementsPage';
+import { ReactivityPage } from './pages/ReactivityPage';
 import { SectionPlaceholder } from './pages/SectionPlaceholder';
 
 export const SECTIONS: { id: Section; label: string; icon: string }[] = [
@@ -28,6 +29,8 @@ const statusText = (status: ClientStatus) => {
   if (status.reason === 'unsupported-version') return `Unsupported contract v${status.version}`;
   return 'Waiting for the app';
 };
+
+const contractText = (status: ClientStatus) => (status.connected ? `Contract v${status.version}` : 'Not connected');
 
 const formatMs = (value: number | undefined) => (value === undefined ? '–' : `${value < 10 ? value.toFixed(2) : value.toFixed(1)} ms`);
 
@@ -109,7 +112,7 @@ export class Shell extends Component<HTMLDivElement> {
             <span class={() => (m.state.status.connected ? 'dt-mode ok' : 'dt-mode')} x-html={ICONS.bolt}></span>
             <div>
               <b>Development</b>
-              <small>{() => (m.state.status.connected ? `Contract v${m.state.status.version}` : 'Not connected')}</small>
+              <small>{() => contractText(m.state.status)}</small>
             </div>
           </footer>
         </nav>
@@ -136,7 +139,8 @@ export class Shell extends Component<HTMLDivElement> {
               </p>
             </div>
             <ElementsPage x-wait={() => !m.state.status.connected || m.state.section !== 'elements'} />
-            {SECTIONS.filter((section) => section.id !== 'elements').map((section) => (
+            <ReactivityPage x-wait={() => !m.state.status.connected || m.state.section !== 'reactivity'} />
+            {SECTIONS.filter((section) => section.id !== 'elements' && section.id !== 'reactivity').map((section) => (
               <SectionPlaceholder
                 key={section.id}
                 title={section.label}

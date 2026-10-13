@@ -3,6 +3,10 @@ import { formatPath, formatValue } from '../format';
 import { DevtoolsModel } from '../model/DevtoolsModel';
 import { ElementsModel, valueId, type Row } from '../model/ElementsModel';
 
+const visibilityGlyph = (visible: boolean | undefined) => (visible ? '◉' : '○');
+const activeText = (active: boolean | null) => (active === false ? 'inactive' : 'active');
+const eventKind = (dom: boolean) => (dom ? 'dom' : 'component');
+
 const FRAMEWORK_PROPS = new Set(['indexkey', 'runover', 'childs', 'initializeComponent', 'oninitializeComponent', 'key', 'ref', 'options', 'transition']);
 
 function TreeRow(props: { row: Row; model: ElementsModel }) {
@@ -120,7 +124,7 @@ class Inspector extends Component<HTMLElement> {
                 aria-label="Toggle visibility"
                 onclick={() => m.setVisible(!data()?.visible)}
               >
-                {() => (data()?.visible ? '◉' : '○')}
+                {() => visibilityGlyph(data()?.visible)}
               </button>
             </div>
             <nav class="dt-tabs">
@@ -153,7 +157,7 @@ class Inspector extends Component<HTMLElement> {
                     <span class="dt-pill">{binding.kind}</span>
                     <span>{() => binding.property ?? (typeof binding.member === 'string' ? binding.member : '')}</span>
                     <span class="dt-fill"></span>
-                    <span class={binding.active === false ? 'dt-state' : 'dt-state ok'}>{() => (binding.active === false ? 'inactive' : 'active')}</span>
+                    <span class={binding.active === false ? 'dt-state' : 'dt-state ok'}>{() => activeText(binding.active)}</span>
                   </li>
                 ))}
               </ul>
@@ -194,7 +198,7 @@ class Inspector extends Component<HTMLElement> {
               <ul class="dt-list">
                 {(data()?.events ?? []).map((event, index) => (
                   <li key={index}>
-                    <span class="dt-pill">{() => (event.dom ? 'dom' : 'component')}</span>
+                    <span class="dt-pill">{() => eventKind(event.dom)}</span>
                     <span>{event.name}</span>
                     <span class="dt-fill"></span>
                     <Value value={event.handler} />
@@ -254,11 +258,13 @@ class Inspector extends Component<HTMLElement> {
 
 export class ElementsPage extends Component<HTMLElement> {
   static override elementTag = 'section';
-  model = new ElementsModel(FromService(DevtoolsModel)!.client);
+  devtools = FromService(DevtoolsModel)!;
+  model = new ElementsModel(this.devtools.client);
 
   override onConfigured() {
     this.class.add('dt-elements');
     this.motif.setDisposable(() => this.model.dispose());
+    this.motif.setDisposable(this.devtools.onReveal((path) => void this.model.reveal(path)));
     this.bindings.watch(() => {
       if (this.model.state.revealed === 0) return;
       requestAnimationFrame(() => (this.element as HTMLElement).querySelector('.dt-row.selected')?.scrollIntoView({ block: 'nearest' }));
