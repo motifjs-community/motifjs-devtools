@@ -23,7 +23,9 @@ export type DockPosition = 'bottom' | 'right' | 'window';
 
 export type BridgeDock = { channel: typeof CHANNEL; kind: 'dock'; position: DockPosition };
 
-export type BridgeEvent = { channel: typeof CHANNEL; kind: 'event'; event: { type: string; payload?: unknown } };
+export type BridgeEvent = { channel: typeof CHANNEL; kind: 'event'; event: { type: string; payload?: unknown; time?: number } };
+
+export type PageMemory = { used: number; total: number; limit: number };
 
 export type BridgeMessage = BridgeHello | BridgeDock | BridgeRequest | BridgeResponse | BridgeStatus | BridgeEvent;
 
@@ -57,7 +59,7 @@ export const WRITE_METHODS = [
   'setStoreValue',
 ] as const;
 
-export const PAGE_METHODS = ['highlight', 'pick'] as const;
+export const PAGE_METHODS = ['highlight', 'pick', 'getMemory'] as const;
 
 export type BridgeMethod = (typeof READ_METHODS)[number] | (typeof WRITE_METHODS)[number] | (typeof PAGE_METHODS)[number];
 

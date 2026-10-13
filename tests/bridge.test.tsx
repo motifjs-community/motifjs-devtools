@@ -190,6 +190,34 @@ describe('bridge', () => {
     expect(JSON.parse(JSON.stringify(flush))).toEqual(flush);
   });
 
+  it('stamps every event with the page time', async () => {
+    const root = runApp();
+    start();
+    const before = performance.timeOrigin + performance.now();
+    root.state.count++;
+    await tick();
+    await tick();
+    const after = performance.timeOrigin + performance.now();
+    const events = messages.filter((m) => m.kind === 'event');
+    expect(events.length).toBeGreaterThan(0);
+    for (const message of events) {
+      const time = message.kind === 'event' ? message.event.time! : 0;
+      expect(time).toBeGreaterThanOrEqual(before);
+      expect(time).toBeLessThanOrEqual(after);
+    }
+  });
+
+  it('reads the heap size of the page when the browser reports it', async () => {
+    start();
+    expect(await call('getMemory')).toMatchObject({ ok: true, value: null });
+    Object.defineProperty(performance, 'memory', { configurable: true, value: { usedJSHeapSize: 10, totalJSHeapSize: 20, jsHeapSizeLimit: 40 } });
+    try {
+      expect(await call('getMemory')).toMatchObject({ ok: true, value: { used: 10, total: 20, limit: 40 } });
+    } finally {
+      delete (performance as { memory?: unknown }).memory;
+    }
+  });
+
   it('passes write results back', async () => {
     runApp();
     start();

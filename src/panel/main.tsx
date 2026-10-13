@@ -8,6 +8,7 @@ import { RouterModel } from './model/RouterModel';
 import { StoresModel } from './model/StoresModel';
 import { ServicesModel } from './model/ServicesModel';
 import { HomeModel } from './model/HomeModel';
+import { PerformanceModel } from './model/PerformanceModel';
 import { Shell } from './Shell';
 import './styles/panel.css';
 import './styles/elements.css';
@@ -17,6 +18,7 @@ import './styles/logs.css';
 import './styles/stores.css';
 import './styles/services.css';
 import './styles/home.css';
+import './styles/performance.css';
 
 const peer = () => (window.opener as Window | null) ?? (window.parent !== window ? window.parent : null);
 const client = createClient(windowPort(window, peer));
@@ -24,8 +26,9 @@ const model = new DevtoolsModel(client);
 const reactivity = new ReactivityModel(client);
 const router = new RouterModel(client);
 const logs = new LogsModel(client);
-const stores = new StoresModel(client, () => model.state.section === 'stores');
+const stores = new StoresModel(client, () => model.state.section === 'stores' || model.state.section === 'performance');
 const services = new ServicesModel(client, () => model.state.section === 'services');
+const performance = new PerformanceModel(client, () => model.state.counters);
 const home = new HomeModel(client, () => model.state.section === 'home');
 
 effect(() => {
@@ -33,7 +36,8 @@ effect(() => {
 });
 
 effect(() => {
-  if (model.state.section === 'stores' && model.state.status.connected) void stores.load();
+  const section = model.state.section;
+  if ((section === 'stores' || section === 'performance') && model.state.status.connected) void stores.load();
 });
 
 effect(() => {
@@ -54,4 +58,5 @@ builder.services.addSingleton(LogsModel, { useValue: logs });
 builder.services.addSingleton(StoresModel, { useValue: stores });
 builder.services.addSingleton(ServicesModel, { useValue: services });
 builder.services.addSingleton(HomeModel, { useValue: home });
+builder.services.addSingleton(PerformanceModel, { useValue: performance });
 builder.build().run('#app', new Shell());

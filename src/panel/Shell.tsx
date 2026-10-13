@@ -8,6 +8,7 @@ import { DevtoolsModel, type Section } from './model/DevtoolsModel';
 import { ElementsPage } from './pages/ElementsPage';
 import { HomePage } from './pages/HomePage';
 import { ReactivityPage } from './pages/ReactivityPage';
+import { PerformancePage } from './pages/PerformancePage';
 import { LogsPage } from './pages/LogsPage';
 import { RouterPage } from './pages/RouterPage';
 import { StoresPage } from './pages/StoresPage';
@@ -17,6 +18,7 @@ export const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: 'home', label: 'Home', icon: ICONS.home },
   { id: 'elements', label: 'Elements', icon: ICONS.elements },
   { id: 'reactivity', label: 'Reactivity', icon: ICONS.reactivity },
+  { id: 'performance', label: 'Performance', icon: ICONS.performance },
   { id: 'router', label: 'Router', icon: ICONS.router },
   { id: 'stores', label: 'Stores', icon: ICONS.stores },
   { id: 'services', label: 'Services', icon: ICONS.services },
@@ -146,6 +148,7 @@ export class Shell extends Component<HTMLDivElement> {
             </div>
             <ElementsPage x-wait={() => !m.state.status.connected || m.state.section !== 'elements'} />
             <ReactivityPage x-wait={() => !m.state.status.connected || m.state.section !== 'reactivity'} />
+            <PerformancePage x-wait={() => !m.state.status.connected || m.state.section !== 'performance'} />
             <RouterPage x-wait={() => !m.state.status.connected || m.state.section !== 'router'} />
             <StoresPage x-wait={() => !m.state.status.connected || m.state.section !== 'stores'} />
             <ServicesPage x-wait={() => !m.state.status.connected || m.state.section !== 'services'} />
