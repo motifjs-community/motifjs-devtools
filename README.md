@@ -18,8 +18,12 @@
 - **Reactivity.** Total effect runs, flushes, the last and the slowest flush, live effects, and a timeline of
   the last 200 flushes. A flush opens to the changes that started it and the effects that ran; an effect
   links to its component in Elements. Recording starts when the panel opens and can be paused or cleared.
+- **Router.** The current route with its params and the paths along its chain, and the last 50 navigations
+  the app recorded since devtools was enabled: the address shown, the address requested when a redirect or
+  middleware changed it, the outcome (`done`, `skipped`, `cancelled`, `notFound`, `error`), the duration, the
+  time and the cancel reason. The list can be filtered by outcome.
 - **Header counters.** Components in the tree, live effects and the duration of the last reactivity flush.
-- **Router, Stores, Logs.** The sections are in the menu; their screens are not built yet.
+- **Stores, Logs.** The sections are in the menu; their screens are not built yet.
 
 Light and dark themes follow the system, or are chosen in the header.
 

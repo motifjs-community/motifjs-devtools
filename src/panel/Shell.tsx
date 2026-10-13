@@ -1,11 +1,13 @@
 import { Component, FromService } from '@motifx/core';
 import type { ClientStatus } from '../client/client';
 import { VERSION } from '../version';
+import { formatMs } from './format';
 import { ICONS } from './icons';
 import type { DockPosition } from '../bridge/protocol';
 import { DevtoolsModel, type Section } from './model/DevtoolsModel';
 import { ElementsPage } from './pages/ElementsPage';
 import { ReactivityPage } from './pages/ReactivityPage';
+import { RouterPage } from './pages/RouterPage';
 import { SectionPlaceholder } from './pages/SectionPlaceholder';
 
 export const SECTIONS: { id: Section; label: string; icon: string }[] = [
@@ -31,8 +33,6 @@ const statusText = (status: ClientStatus) => {
 };
 
 const contractText = (status: ClientStatus) => (status.connected ? `Contract v${status.version}` : 'Not connected');
-
-const formatMs = (value: number | undefined) => (value === undefined ? '–' : `${value < 10 ? value.toFixed(2) : value.toFixed(1)} ms`);
 
 export class Shell extends Component<HTMLDivElement> {
   model = FromService(DevtoolsModel)!;
@@ -140,7 +140,8 @@ export class Shell extends Component<HTMLDivElement> {
             </div>
             <ElementsPage x-wait={() => !m.state.status.connected || m.state.section !== 'elements'} />
             <ReactivityPage x-wait={() => !m.state.status.connected || m.state.section !== 'reactivity'} />
-            {SECTIONS.filter((section) => section.id !== 'elements' && section.id !== 'reactivity').map((section) => (
+            <RouterPage x-wait={() => !m.state.status.connected || m.state.section !== 'router'} />
+            {SECTIONS.filter((section) => section.id === 'stores' || section.id === 'logs').map((section) => (
               <SectionPlaceholder
                 key={section.id}
                 title={section.label}
