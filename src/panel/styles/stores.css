@@ -148,6 +148,17 @@
   font: 11px var(--dt-mono);
 }
 
+.dt-store-entry.released .dt-store-row {
+  opacity: 0.55;
+}
+
+.dt-released {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+}
+
 @media (max-width: 640px) {
   .dt-store-row {
     grid-template-columns: 28px minmax(0, 1fr) auto 16px;

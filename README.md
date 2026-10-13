@@ -30,8 +30,9 @@
 - **Stores.** Every `reactive`, `useModel`, signal and computed the app keeps, named after the component or
   service field that holds it (`Settings.prefs`, `ThemeService.theme`), with its type and a short value. A store
   opens to who keeps it (a component links to Elements), the last field that changed and its value one level at
-  a time; a string, number or boolean value can be edited in place. The list can be filtered by type. Flush
-  triggers in Reactivity name the store and field that changed.
+  a time; a string, number or boolean value can be edited in place. The list can be filtered by type and follows the app as stores are created and components go away;
+  a store no longer kept by a component or service is set aside under "Show released" until the browser collects
+  it. Flush triggers in Reactivity name the store and field that changed.
 
 Light and dark themes follow the system, or are chosen in the header.
 

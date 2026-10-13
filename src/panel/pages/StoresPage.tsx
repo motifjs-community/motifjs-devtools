@@ -7,6 +7,8 @@ import { EditableValue, PropNode, isEditable } from '../ValueTree';
 
 const TYPES = ['reactive', 'signal', 'computed'] as const;
 
+const releasedText = (shown: boolean, count: number) => (shown ? 'Hide released' : `Show released (${count})`);
+
 function HolderLink(props: { holder: StoreHolder; devtools: DevtoolsModel }) {
   const { holder, devtools } = props;
   if (holder.kind === 'component') {
@@ -39,8 +41,8 @@ function StoreEntry(props: { id: number; model: StoresModel; devtools: DevtoolsM
   const source = model.sourceOf(id);
   return (
     <div
-      class={() => `dt-store-entry${open() ? ' open' : ''}${change() !== undefined ? ' changed' : ''}`}
-      x-display={() => model.state.filter === 'all' || model.state.filter === item()?.type}
+      class={() => `dt-store-entry${open() ? ' open' : ''}${change() !== undefined ? ' changed' : ''}${item()?.released === true ? ' released' : ''}`}
+      x-display={() => model.shows(item())}
     >
       <button type="button" class="dt-store-row" onclick={() => model.toggle(id)}>
         <span class="dt-mono dt-muted">{() => number()}</span>
@@ -60,7 +62,7 @@ function StoreEntry(props: { id: number; model: StoresModel; devtools: DevtoolsM
           <dt>Held by</dt>
           <dd class="dt-store-holders">
             <span class="dt-muted" x-display={() => (item()?.holders.length ?? 0) === 0}>
-              Module or closure
+              {() => (item()?.released === true ? 'Not kept by a component or service anymore' : 'Module or closure')}
             </span>
             {() => (item()?.holders ?? []).map((holder, index) => <HolderLink key={index} holder={holder} devtools={devtools} />)}
           </dd>
@@ -96,7 +98,7 @@ export class StoresPage extends Component<HTMLElement> {
   override view() {
     const m = this.model;
     const d = this.devtools;
-    const splitText = () => TYPES.map((type) => `${m.state.stores.filter((s) => s.type === type).length} ${type}`).join(' · ');
+    const splitText = () => TYPES.map((type) => `${m.liveStores.filter((s) => s.type === type).length} ${type}`).join(' · ');
     return (
       <>
         <header class="dt-page-head">
@@ -115,7 +117,7 @@ export class StoresPage extends Component<HTMLElement> {
         <div class="dt-panel dt-route-card dt-store-card">
           <span class="dt-route-icon" x-html={ICONS.stores}></span>
           <div class="dt-route-main">
-            <b class="dt-route-uri dt-store-total">{() => String(m.state.stores.length)}</b>
+            <b class="dt-route-uri dt-store-total">{() => String(m.liveStores.length)}</b>
             <small>Live stores</small>
             <span class="dt-log-split dt-muted">{() => splitText()}</span>
           </div>
@@ -151,6 +153,12 @@ export class StoresPage extends Component<HTMLElement> {
           {m.state.stores.map((item) => (
             <StoreEntry key={item.id} id={item.id} model={m} devtools={d} />
           ))}
+          <div class="dt-released" x-display={() => m.releasedCount > 0}>
+            <button type="button" class="dt-link dt-released-toggle" onclick={() => m.toggleReleased()}>
+              {() => releasedText(m.state.showReleased, m.releasedCount)}
+            </button>
+            <small class="dt-muted">Released stores leave the list when the browser collects them.</small>
+          </div>
         </div>
       </>
     );
