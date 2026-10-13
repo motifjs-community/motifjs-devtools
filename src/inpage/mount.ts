@@ -25,6 +25,7 @@ const HOST_TAG = 'motif-devtools';
 const STORAGE_KEY = 'motif-devtools:dock';
 const WINDOW_NAME = 'motif-devtools';
 const MIN_SIZE = 160;
+const FAILED_HTML = '<!doctype html><p style="font: 13px system-ui; padding: 16px">Motif DevTools could not load its panel.</p>';
 let current: DevtoolsHandle | null = null;
 
 const readSaved = (): Partial<Saved> => {
@@ -104,19 +105,30 @@ export function mount(options: MountOptions = {}): DevtoolsHandle {
 
   const announce = () => post({ channel: CHANNEL, kind: 'dock', position: state.position });
 
+  let panelHtml: Promise<string> | null = null;
+  const loadHtml = () =>
+    (panelHtml ??= options.html !== undefined
+      ? Promise.resolve(options.html)
+      : import('virtual:motif-devtools-panel').then((m) => m.default, () => FAILED_HTML));
+
   const loadPanel = (into: 'frame' | Window) => {
     if (into === 'frame') {
       if (frameLoaded) return;
       frameLoaded = true;
       if (options.src) frame.src = options.src;
-      else frame.srcdoc = options.html ?? '';
+      else
+        void loadHtml().then((html) => {
+          if (frameLoaded) frame.srcdoc = html;
+        });
       return;
     }
-    if (!options.src) {
-      into.document.open();
-      into.document.write(options.html ?? '');
-      into.document.close();
-    }
+    if (!options.src)
+      void loadHtml().then((html) => {
+        if (into.closed) return;
+        into.document.open();
+        into.document.write(html);
+        into.document.close();
+      });
   };
 
   const unloadFrame = () => {

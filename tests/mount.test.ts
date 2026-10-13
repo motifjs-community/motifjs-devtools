@@ -10,6 +10,10 @@ const frame = () => shadow().querySelector('iframe')!;
 const fromFrame = (data: unknown, source: unknown = frame().contentWindow) =>
   window.dispatchEvent(new MessageEvent('message', { data, source: source as Window }));
 
+const settle = async () => {
+  for (let i = 0; i < 3; i++) await Promise.resolve();
+};
+
 beforeEach(() => {
   localStorage.clear();
 });
@@ -22,7 +26,7 @@ afterEach(() => {
 });
 
 describe('mount', () => {
-  it('adds one host with a toggle button and opens at the bottom by default', () => {
+  it('adds one host with a toggle button and opens at the bottom by default', async () => {
     handle = mount({ html: '<p>panel</p>' });
     expect(mount()).toBe(handle);
     expect(document.querySelectorAll('motif-devtools')).toHaveLength(1);
@@ -31,7 +35,17 @@ describe('mount', () => {
     expect(handle.isOpen).toBe(true);
     expect(dockElement().hidden).toBe(false);
     expect(dockElement().dataset.position).toBe('bottom');
+    await settle();
     expect(frame().getAttribute('srcdoc')).toBe('<p>panel</p>');
+  });
+
+  it('loads the panel that comes with the package when no page is given', async () => {
+    handle = mount({ open: true });
+    for (let i = 0; i < 50 && !frame().hasAttribute('srcdoc'); i++) await new Promise((r) => setTimeout(r, 20));
+    const html = frame().getAttribute('srcdoc') ?? '';
+    expect(html).toContain('<div id="app"></div>');
+    expect(html).toContain('src/panel/main.tsx');
+    expect(frame().hasAttribute('src')).toBe(false);
   });
 
   it('docks to the right and remembers the position', () => {
@@ -70,7 +84,7 @@ describe('mount', () => {
     expect(dockElement().hidden).toBe(false);
   });
 
-  it('moves to a separate window and docks back when it is closed', () => {
+  it('moves to a separate window and docks back when it is closed', async () => {
     vi.useFakeTimers();
     const written: string[] = [];
     const popup = {
@@ -88,6 +102,7 @@ describe('mount', () => {
     handle.dock('window');
     expect(handle.position).toBe('window');
     expect(dockElement().hidden).toBe(true);
+    await settle();
     expect(written).toEqual(['<p>panel</p>']);
     popup.closed = true;
     vi.advanceTimersByTime(500);

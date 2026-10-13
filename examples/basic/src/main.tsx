@@ -1,138 +1,16 @@
-import { Application, Component, FromService, RouterView, createSignal, reactive, useNavigation, type RouteItem } from '@motifx/core';
+import { Application, type RouteItem } from '@motifx/core';
 import { mount } from '@motifx-community/devtools';
-
-const store = reactive({
-  stats: [
-    { id: 1, title: 'Total revenue', value: 24780, trend: 12.5 },
-    { id: 2, title: 'Orders', value: 342, trend: -3.1 },
-    { id: 3, title: 'Customers', value: 1290, trend: 4.2 },
-  ],
-  orders: [
-    { id: 1042, customer: 'Ada', total: 120 },
-    { id: 1043, customer: 'Linus', total: 64 },
-  ],
-  signedIn: false,
-  unsaved: false,
-});
-
-function StatCard(props: { stat: { title: string; value: number; trend: number } }) {
-  return (
-    <article class={() => `card ${props.stat.trend >= 0 ? 'positive' : 'negative'}`}>
-      <small>{props.stat.title}</small>
-      <div>{() => props.stat.value.toLocaleString('en-US')}</div>
-      <b>{() => `${props.stat.trend > 0 ? '+' : ''}${props.stat.trend}%`}</b>
-    </article>
-  );
-}
-
-function UserMenu() {
-  return <button type="button">Signed in</button>;
-}
-
-class CartService {
-  items = [{ name: 'Tea', qty: 2 }];
-  total = 24;
-}
-
-class ApiClient {
-  baseUrl = '/api';
-}
-
-class Dashboard extends Component<HTMLElement> {
-  static override elementTag = 'section';
-  cart = FromService(CartService)!;
-
-  addOrder() {
-    const id = store.orders.length + 1042;
-    store.orders.push({ id, customer: `Customer ${id}`, total: Math.round(Math.random() * 200) });
-    store.stats[1].value++;
-    store.stats[0].value += store.orders[store.orders.length - 1].total;
-  }
-
-  override view() {
-    return (
-      <>
-      
-        <div class="stats">
-          {store.stats.map((stat) => (
-            <StatCard key={stat.id} stat={stat} />
-          ))}
-        </div>
-        <div>
-          <button type="button" onclick={() => this.addOrder()}>Add order</button>
-        </div>
-        <table>
-          <tbody>
-            {store.orders.map((order) => (
-              <tr key={order.id}>
-                <td>{`#${order.id}`}</td>
-                <td>{order.customer}</td>
-                <td>{() => order.total}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </>
-    );
-  }
-}
-
-function OrderPage() {
-  const nav = useNavigation();
-  return <h2>{`Order #${nav.params.id}`}</h2>;
-}
-
-class ThemeService {
-  theme = createSignal<'light' | 'dark'>('light');
-}
-
-class Settings extends Component<HTMLElement> {
-  static override elementTag = 'section';
-  themes = FromService(ThemeService)!;
-  prefs = reactive({ compact: false, pageSize: 20 });
-
-  override view() {
-    return (
-      <>
-        <label>
-          <input type="checkbox" checked={() => store.unsaved} onchange={() => (store.unsaved = !store.unsaved)} />
-          Unsaved changes
-        </label>
-        <label>
-          <input type="checkbox" checked={() => this.prefs.compact} onchange={() => (this.prefs.compact = !this.prefs.compact)} />
-          Compact rows
-        </label>
-        <button type="button" onclick={() => (this.themes.theme.value = this.themes.theme.value === 'light' ? 'dark' : 'light')}>
-          {() => `Theme: ${this.themes.theme.value}`}
-        </button>
-      </>
-    );
-  }
-}
-
-function AppShell() {
-  return (
-    <div>
-      <header>
-        <b>Motif App</b>
-        <nav>
-          <a rel="router" href="/dashboard">Dashboard</a>
-          <a rel="router" href="/orders/1042">Order 1042</a>
-          <a rel="router" href="/settings">Settings</a>
-          <a rel="router" href="/login">Login</a>
-          <a rel="router" href="/missing">Missing</a>
-          <a rel="router" href="/broken">Broken</a>
-          <a rel="router" href="/loop">Loop</a>
-        </nav>
-        <button type="button" onclick={() => (store.signedIn = !store.signedIn)}>Toggle sign-in</button>
-        <UserMenu x-wait={() => !store.signedIn} />
-      </header>
-      <main>
-        <RouterView />
-      </main>
-    </div>
-  );
-}
+import { AppShell } from './layout';
+import { CartPage } from './pages/CartPage';
+import { Dashboard } from './pages/Dashboard';
+import { LabPage } from './pages/LabPage';
+import { OrderPage } from './pages/OrderPage';
+import { DailyReport, Reports, WeeklyReport } from './pages/Reports';
+import { SettingsPage } from './pages/SettingsPage';
+import { ApiClient, CartService, DialogState, OrderDraft, PriceFormatter, ThemeService } from './services';
+import { session } from './stores';
+import { toast } from './toasts';
+import './styles.css';
 
 const routes: RouteItem[] = [
   {
@@ -140,12 +18,32 @@ const routes: RouteItem[] = [
     control: AppShell,
     childs: [
       { path: '/', redirect: '/dashboard' },
-      { path: '/dashboard', control: Dashboard, keepAlive: true },
-      { path: '/orders/{id}', control: OrderPage },
+      { path: '/dashboard', name: 'dashboard', control: Dashboard, keepAlive: true },
+      {
+        path: '/orders/{id}',
+        name: 'order',
+        control: OrderPage,
+        validate: (e) => /^\d+$/.test(String(e.params.id)),
+      },
+      { path: '/cart', name: 'cart', control: CartPage },
       {
         path: '/settings',
-        control: Settings,
-        onLeave: () => (store.unsaved ? { cancel: true, reason: 'unsaved changes' } : undefined),
+        name: 'settings',
+        control: SettingsPage,
+        onLeave: () => (session.unsaved ? { cancel: true, reason: 'unsaved changes' } : undefined),
+      },
+      { path: '/lab', name: 'lab', control: LabPage, meta: { title: 'Lab' } },
+      {
+        path: '/reports',
+        name: 'reports',
+        control: Reports,
+        alias: '/analytics',
+        meta: { title: 'Reports', section: 'analytics' },
+        childs: [
+          { path: '/', redirect: '/reports/daily' },
+          { path: '/daily', name: 'reports.daily', control: DailyReport, meta: { range: 'day' } },
+          { path: '/weekly', name: 'reports.weekly', control: WeeklyReport, meta: { range: 'week' } },
+        ],
       },
       { path: '/login', redirect: '/dashboard' },
       {
@@ -157,16 +55,20 @@ const routes: RouteItem[] = [
       { path: '/loop', redirect: '/loop-back' },
       { path: '/loop-back', redirect: '/loop' },
     ],
+    onEnter: () => toast('Welcome to Motif Shop'),
   },
 ];
 
 const builder = Application.CreateBuilder();
 builder.services.addSingleton(ThemeService, ThemeService);
+builder.services.addSingleton(CartService, CartService);
 builder.services.addSingleton(ApiClient, ApiClient);
-builder.services.addScoped(CartService, CartService);
+builder.services.addScoped(OrderDraft, OrderDraft);
+builder.services.addScoped(DialogState, DialogState);
+builder.services.addTransient(PriceFormatter, PriceFormatter);
 const app = builder.build();
 app.useDevelopment(true);
 app.useRouter({ routes, mode: 'hash' });
 app.run('#app');
 
-mount({ src: './panel.html' });
+mount();
