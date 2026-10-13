@@ -28,6 +28,8 @@ export class DevtoolsModel {
   });
 
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingReveal: number[] | null = null;
+  private revealListener: ((path: number[]) => void) | null = null;
   private readonly offs: (() => void)[] = [];
 
   constructor(readonly client: Client) {
@@ -49,6 +51,22 @@ export class DevtoolsModel {
 
   select(section: Section) {
     this.state.section = section;
+  }
+
+  reveal(path: number[]) {
+    this.select('elements');
+    if (this.revealListener !== null) this.revealListener(path);
+    else this.pendingReveal = path;
+  }
+
+  onReveal(listener: (path: number[]) => void) {
+    this.revealListener = listener;
+    const pending = this.pendingReveal;
+    this.pendingReveal = null;
+    if (pending !== null) listener(pending);
+    return () => {
+      if (this.revealListener === listener) this.revealListener = null;
+    };
   }
 
   async togglePick() {

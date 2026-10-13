@@ -15,8 +15,11 @@
   effects and data from community packages, and can show or hide the component.
 - **Select in the page.** Point at something in the app to highlight its component, click to select it in
   the tree. Hovering a tree row highlights the component in the page.
+- **Reactivity.** Total effect runs, flushes, the last and the slowest flush, live effects, and a timeline of
+  the last 200 flushes. A flush opens to the changes that started it and the effects that ran; an effect
+  links to its component in Elements. Recording starts when the panel opens and can be paused or cleared.
 - **Header counters.** Components in the tree, live effects and the duration of the last reactivity flush.
-- **Reactivity, Router, Stores, Logs.** The sections are in the menu; their screens are not built yet.
+- **Router, Stores, Logs.** The sections are in the menu; their screens are not built yet.
 
 Light and dark themes follow the system, or are chosen in the header.
 

@@ -1,0 +1,259 @@
+.dt-profile {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 24px 32px;
+}
+
+.dt-page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.dt-page-head small,
+.dt-card small,
+.dt-flush-detail small {
+  color: var(--dt-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.dt-page-head h1 {
+  margin: 2px 0 0;
+  color: var(--dt-text-strong);
+  font-size: 20px;
+}
+
+.dt-page-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.dt-button {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--dt-border);
+  border-radius: 6px;
+  background: var(--dt-bg-raised);
+  color: var(--dt-text-strong);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dt-button:hover {
+  background: var(--dt-bg-hover);
+}
+
+.dt-button.primary {
+  border-color: transparent;
+  background: var(--dt-accent);
+  color: var(--dt-bg);
+}
+
+.dt-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--dt-border);
+  border-top: 2px solid var(--dt-border);
+  border-radius: 8px;
+  background: var(--dt-bg-raised);
+}
+
+.dt-card.blue {
+  border-top-color: var(--dt-accent);
+}
+
+.dt-card.purple {
+  border-top-color: #8b7cff;
+}
+
+.dt-card.green {
+  border-top-color: var(--dt-ok);
+}
+
+.dt-card b {
+  color: var(--dt-text-strong);
+  font: 600 22px/1.2 var(--dt-mono);
+}
+
+.dt-card span {
+  color: var(--dt-muted);
+  font-size: 11px;
+}
+
+.dt-panel {
+  border: 1px solid var(--dt-border);
+  border-radius: 8px;
+  background: var(--dt-bg-raised);
+  overflow: hidden;
+}
+
+.dt-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--dt-border);
+}
+
+.dt-panel-head b,
+.dt-panel-head small {
+  display: block;
+}
+
+.dt-panel-head b {
+  color: var(--dt-text-strong);
+}
+
+.dt-panel-head small {
+  color: var(--dt-muted);
+  font-size: 11px;
+}
+
+.dt-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dt-ok);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.dt-live::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.dt-live.paused {
+  color: var(--dt-muted);
+}
+
+.dt-flush-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.7fr 0.7fr 1.6fr;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--dt-border);
+  background: transparent;
+  color: var(--dt-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dt-flush-row:hover {
+  background: var(--dt-bg-hover);
+}
+
+.dt-flush-row b {
+  color: var(--dt-text-strong);
+}
+
+.dt-table-head {
+  min-height: 30px;
+  color: var(--dt-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: default;
+}
+
+.dt-table-head:hover {
+  background: transparent;
+}
+
+.dt-mono {
+  font-family: var(--dt-mono);
+}
+
+.dt-muted {
+  color: var(--dt-muted);
+}
+
+.dt-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--dt-bg-hover);
+  overflow: hidden;
+}
+
+.dt-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--dt-accent), #8b7cff);
+}
+
+.dt-flush.open .dt-flush-row {
+  background: var(--dt-bg-active);
+}
+
+.dt-flush-detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 10px 14px 4px;
+  border-bottom: 1px solid var(--dt-border);
+  background: var(--dt-bg);
+}
+
+.dt-flush-detail .dt-list {
+  padding: 4px 0 8px;
+}
+
+.dt-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dt-accent);
+  font: inherit;
+  font-family: var(--dt-mono);
+  cursor: pointer;
+}
+
+.dt-link:disabled {
+  color: var(--dt-muted);
+  cursor: default;
+}
+
+.dt-link:not(:disabled):hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .dt-profile {
+    padding: 16px;
+  }
+
+  .dt-flush-row {
+    grid-template-columns: 1.4fr 1fr 0.6fr 0.6fr;
+  }
+
+  .dt-flush-row > :last-child {
+    display: none;
+  }
+
+  .dt-flush-detail {
+    grid-template-columns: 1fr;
+  }
+}
