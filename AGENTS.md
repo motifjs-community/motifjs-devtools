@@ -14,18 +14,23 @@ It reads the devtools contract the core puts on `globalThis.__MOTIF_DEVTOOLS__` 
 - `src/client/`: runs in the panel. `createClient(port)` sends requests and receives responses, events, the
   connection status and the dock position.
 - `src/transport/window.ts`: a `Port` over `postMessage` between two windows.
-- `src/inpage/`: `mount()`, the button and the docked iframe / separate window in the inspected page.
+- `src/inpage/`: `mount()`, the button and the docked iframe / separate window in the inspected page. Without
+  `src` or `html` it loads the panel from `virtual:motif-devtools-panel`.
 - `src/panel/`: the panel app, written in MotifJS. `model/` holds the state (`DevtoolsModel`,
   `ElementsModel`), `pages/` the screens, `styles/` the CSS with light and dark tokens.
-- `examples/basic/`: a demo app (`index.html`) and the panel page (`panel.html`).
+- `scripts/panel.ts`: the Vite plugin behind `virtual:motif-devtools-panel`. In a build it compiles `src/panel` with
+  its own copy of `@motifx/core` into one HTML page and exports it as a string; on the dev server it exports a page
+  that loads `src/panel/main.tsx` from the server.
+- `examples/basic/`: a small shop that exercises every screen; each page says what to look at in the panel.
 
 ## Build / test / lint commands
 
 - `npm test`: Vitest + jsdom, files in `tests/`. JSX works in tests because Vitest uses `vite.config.ts`.
-- `npm run typecheck`: `tsc --noEmit` over `src`, `tests` and `examples`.
+- `npm run typecheck`: `tsc --noEmit` over `src`, `tests`, `examples` and `scripts`.
 - `npm run lint:jsx`: `motif-lint`.
-- `npm run build`: library build of `src/index.ts` to `dist/index.js`, then `.d.ts` files (the panel is left out).
-- `npm run dev` / `npm run example:build`: the demo in `examples/basic` with the panel page.
+- `npm run build`: library build of `src/index.ts` to `dist/index.js` and the panel to `dist/panel-[hash].js`, then
+  `.d.ts` files.
+- `npm run dev` / `npm run example:build`: the demo in `examples/basic` with the in-page panel.
 - `npm run check`: all of the above, in CI order. Read the build output too: compiler warnings such as
   `MJX001` show there.
 
