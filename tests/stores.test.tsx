@@ -141,6 +141,15 @@ describe('Stores', () => {
     expect(text(detail.querySelector('.dt-store-holders'))).toBe('Module or closure');
   });
 
+  it('names a module store and shows its file', async () => {
+    const stores = STORES();
+    stores[0] = { ...stores[0], name: 'cart', file: 'src/stores/cart.ts' };
+    const { root } = await render(stores);
+    expect(text(rows(root)[0].querySelector('.dt-store-name'))).toBe('cart#1');
+    const detail = await open(root, 0);
+    expect(text(detail.querySelector('.dt-store-holders'))).toBe('Module src/stores/cart.ts');
+  });
+
   it('records the last change of a store from flush triggers', async () => {
     const { root, emit } = await render();
     emit({ type: 'reactivity:flush', payload: { duration: 1, runs: 1, effects: [], triggers: [{ target: {}, key: 'total', count: 2, store: { id: 2, path: [] } }, { target: {}, key: 'name', count: 1, store: { id: 2, path: ['user'] } }] } });

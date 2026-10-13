@@ -2,12 +2,17 @@ import { Component, FromService } from '@motifx/core';
 import { formatClock } from '../format';
 import { ICONS } from '../icons';
 import { DevtoolsModel } from '../model/DevtoolsModel';
-import { StoresModel, displayName, holderName, summaryOf, type StoreHolder, type StoreTypeFilter } from '../model/StoresModel';
+import { StoresModel, displayName, holderName, summaryOf, type StoreHolder, type StoreItem, type StoreTypeFilter } from '../model/StoresModel';
 import { EditableValue, PropNode, isEditable } from '../ValueTree';
 
 const TYPES = ['reactive', 'signal', 'computed'] as const;
 
 const releasedText = (shown: boolean, count: number) => (shown ? 'Hide released' : `Show released (${count})`);
+
+const unheldText = (item: StoreItem | undefined) => {
+  if (item?.released === true) return 'Not kept by a component or service anymore';
+  return item?.file !== undefined ? `Module ${item.file}` : 'Module or closure';
+};
 
 function HolderLink(props: { holder: StoreHolder; devtools: DevtoolsModel }) {
   const { holder, devtools } = props;
@@ -62,7 +67,7 @@ function StoreEntry(props: { id: number; model: StoresModel; devtools: DevtoolsM
           <dt>Held by</dt>
           <dd class="dt-store-holders">
             <span class="dt-muted" x-display={() => (item()?.holders.length ?? 0) === 0}>
-              {() => (item()?.released === true ? 'Not kept by a component or service anymore' : 'Module or closure')}
+              {() => unheldText(item())}
             </span>
             {() => (item()?.holders ?? []).map((holder, index) => <HolderLink key={index} holder={holder} devtools={devtools} />)}
           </dd>

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Application, Component, createSignal, reactive } from '@motifx/core';
+import { nameModuleStore } from '@motifx/core/devtools';
 import { createBridge, type Bridge } from '../src/bridge/bridge';
 import { CHANNEL, type BridgeMessage, type BridgeResponse } from '../src/bridge/protocol';
 import { tick } from './helpers';
@@ -110,6 +111,16 @@ describe('bridge', () => {
     expect(store.holders).toEqual([{ kind: 'component', path: [0], type: 'Counter', field: 'state' }]);
     expect(store.value).toEqual({ count: 0 });
     expect('released' in store).toBe(false);
+  });
+
+  it('passes the name and file of a module store', async () => {
+    const cart = reactive({ items: [] as string[] });
+    nameModuleStore(cart, 'cart', 'src/stores/cart.ts');
+    runApp();
+    start();
+    const response = (await call('getStores')) as { value: { name: string; file?: string; holders: { field: string }[] }[] };
+    expect(response.value.find((s) => s.name === 'cart')).toMatchObject({ name: 'cart', file: 'src/stores/cart.ts', holders: [] });
+    expect(response.value.find((s) => s.holders.some((h) => h.field === 'state'))).not.toHaveProperty('file');
   });
 
   it('keeps the preview of every entry when a value is opened', async () => {
