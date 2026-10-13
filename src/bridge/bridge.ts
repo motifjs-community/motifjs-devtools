@@ -36,7 +36,7 @@ export interface Bridge {
 
 const METHODS = new Set<string>([...READ_METHODS, ...WRITE_METHODS]);
 const OWN_METHODS = new Set<string>(PAGE_METHODS);
-const DEPTH: Record<string, number> = { getTree: Infinity, inspect: 6, readExtension: 6, getWarnings: 6, getErrors: 8, getScopes: 6, readValue: 6, readStore: 6, readService: 6 };
+const DEPTH: Record<string, number> = { inspect: 6, readExtension: 6, getWarnings: 6, getErrors: 8, getScopes: 6, readValue: 6, readStore: 6, readService: 6 };
 
 type StoreRecord = { id: unknown; name: unknown; file?: unknown; type: unknown; value: unknown; stale?: unknown; released?: unknown; holders: unknown };
 
@@ -61,7 +61,18 @@ const readMemory = (): PageMemory | null => {
   return { used: memory.usedJSHeapSize, total: Number(memory.totalJSHeapSize) || 0, limit: Number(memory.jsHeapSizeLimit) || 0 };
 };
 
+const treeShape = (node: unknown): unknown => {
+  if (typeof node !== 'object' || node === null) return toTransfer(node, 1);
+  const out: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(node)) {
+    if (item === undefined) continue;
+    out[key] = key === 'children' && Array.isArray(item) ? item.map(treeShape) : toTransfer(item, 2);
+  }
+  return out;
+};
+
 const SHAPES: Record<string, (value: unknown) => unknown> = {
+  getTree: treeShape,
   getRoutes: routeShape,
   getStores: (value) =>
     Array.isArray(value)
