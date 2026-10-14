@@ -45,11 +45,11 @@
     "prepublishOnly": "npm run check"
   },
   "peerDependencies": {
-    "@motifx/core": "^1.2.0-rc.0"
+    "@motifx/core": "^1.2.0-rc.6"
   },
   "devDependencies": {
-    "@motifx/compiler": "1.2.0-rc.5",
-    "@motifx/core": "1.2.0-rc.5",
+    "@motifx/compiler": "1.2.0-rc.6",
+    "@motifx/core": "1.2.0-rc.6",
     "@types/node": "^24.19.1",
     "jsdom": "^30.1.2",
     "typescript": "^7.0.2",
