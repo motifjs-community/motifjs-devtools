@@ -23,10 +23,12 @@ export const holderName = (holder: StoreHolder) =>
 
 export const displayName = (item: StoreItem) => (item.holders.length > 0 ? holderName(item.holders[0]) : item.name);
 
+const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
 export function summaryOf(value: unknown): string {
-  if (Array.isArray(value)) return `${value.length} items`;
+  if (Array.isArray(value)) return count(value.length, 'item', 'items');
   if (value !== null && typeof value === 'object' && typeof (value as Record<string, unknown>)[MARK] !== 'string' && typeof (value as { kind?: unknown }).kind !== 'string') {
-    return `${Object.keys(value).length} keys`;
+    return count(Object.keys(value).length, 'key', 'keys');
   }
   return formatValue(value).text;
 }

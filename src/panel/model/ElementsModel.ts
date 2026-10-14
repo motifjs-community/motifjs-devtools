@@ -79,6 +79,7 @@ export class ElementsModel {
   private inspectTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly offs: (() => void)[] = [];
   private hovered: string | null = null;
+  private treeTicket = 0;
 
   constructor(private readonly client: Client) {
     this.offs.push(
@@ -95,11 +96,14 @@ export class ElementsModel {
   }
 
   async loadTree() {
+    const ticket = ++this.treeTicket;
     try {
-      this.tree = await this.client.request<TreeNode | null>('getTree');
+      const tree = await this.client.request<TreeNode | null>('getTree');
+      if (ticket !== this.treeTicket) return;
+      this.tree = tree;
       this.state.error = null;
     } catch (error) {
-      this.state.error = error instanceof Error ? error.message : String(error);
+      if (ticket === this.treeTicket) this.state.error = error instanceof Error ? error.message : String(error);
       return;
     }
     this.rebuildRows();
