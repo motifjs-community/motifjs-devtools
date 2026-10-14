@@ -39,6 +39,8 @@ It reads the devtools contract the core puts on `globalThis.__MOTIF_DEVTOOLS__` 
 - `npm run dev` / `npm run example:build`: the demo in `examples/basic` with the in-page panel.
 - `npm run extension:build`: the extension to `dist-extension/` (Chrome, Edge) and `dist-extension-firefox/` (Firefox),
   ready to load from disk.
+- `npm run extension:zip`: the store packages and the source archive in `dist-store/`; the store texts and
+  screenshots are in `extension/store/`.
 - `npm run check`: all of the above, in CI order. Read the build output too: compiler warnings such as
   `MJX001` show there.
 
