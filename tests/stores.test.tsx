@@ -239,3 +239,13 @@ describe('Stores', () => {
     expect(root.querySelector('.dt-store-empty')).not.toBeNull();
   });
 });
+
+describe('summaryOf', () => {
+  it('counts keys and items in the singular and the plural', async () => {
+    const { summaryOf } = await import('../src/panel/model/StoresModel');
+    expect(summaryOf({ a: 1 })).toBe('1 key');
+    expect(summaryOf({ a: 1, b: 2 })).toBe('2 keys');
+    expect(summaryOf([1])).toBe('1 item');
+    expect(summaryOf([])).toBe('0 items');
+  });
+});

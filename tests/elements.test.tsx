@@ -184,3 +184,38 @@ describe('ElementsPage', () => {
     expect(calls.find((c) => c.method === 'setClass')?.args).toEqual([[0, 1], 'positive', false]);
   });
 });
+
+describe('ElementsModel', () => {
+  it('keeps the newest tree when an older request fails later', async () => {
+    const { ElementsModel } = await import('../src/panel/model/ElementsModel');
+    const statusListeners = new Set<(status: ClientStatus) => void>();
+    let failFirst: (error: Error) => void = () => {};
+    let calls = 0;
+    const client: Client = {
+      status: { connected: true, version: 1 },
+      dock: null,
+      request<T>(method: string) {
+        if (method !== 'getTree') return Promise.resolve(null as T);
+        calls++;
+        if (calls === 1) return new Promise<T>((_, reject) => (failFirst = reject));
+        return Promise.resolve({ path: [], type: 'App', tag: 'div', built: true, visible: true, waiting: false, disposed: false, connected: true, childCount: 0, children: [] } as T);
+      },
+      onEvent: () => () => {},
+      onStatus(listener) {
+        statusListeners.add(listener);
+        return () => statusListeners.delete(listener);
+      },
+      onDock: () => () => {},
+      setDock() {},
+      dispose() {},
+    };
+    const model = new ElementsModel(client);
+    statusListeners.forEach((l) => l({ connected: true, version: 1 }));
+    for (let i = 0; i < 4; i++) await tick();
+    expect(model.state.error).toBeNull();
+    failFirst(new Error('timeout'));
+    for (let i = 0; i < 4; i++) await tick();
+    expect(model.state.error).toBeNull();
+    model.dispose();
+  });
+});

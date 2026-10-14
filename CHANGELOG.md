@@ -10,6 +10,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 - Chrome, Edge and Firefox extension with a MotifJS tab in DevTools, a toolbar icon and popup that show whether the page runs MotifJS in development mode, and the bridge added to the page only while the tab is open.
 
+### Fixed
+
+- Elements no longer shows an error from an older tree request after a newer one succeeded.
+- Stores shows `1 key` and `1 item` instead of `1 keys` and `1 items`.
+
 ## [0.1.0] - 2026-10-14
 
 ### Added
