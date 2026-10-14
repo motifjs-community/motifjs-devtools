@@ -1,6 +1,6 @@
 {
   "name": "@motifx-community/devtools",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Developer tools for inspecting MotifJS (@motifx/core) apps",
   "keywords": [
     "motifjs",
@@ -12,7 +12,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/motifjs-community/motifjs-devtools"
+    "url": "git+https://github.com/motifjs-community/motifjs-devtools.git"
   },
   "homepage": "https://motifjs.com/docs/devtools",
   "bugs": {

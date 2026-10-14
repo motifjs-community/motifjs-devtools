@@ -2,9 +2,8 @@
 
 `motifjs-devtools` is a developer tools panel for **MotifJS** (`@motifx/core`), the fine-grained reactive UI framework without a virtual DOM.
 
-> **Status:** in development and not on npm yet. It needs devtools contract version 1, which ships in the
-> `@motifx/core` release after `1.2.0-rc.5`. Until then it runs against a local core build through the
-> example in this repository.
+> **Status:** early release. It needs `@motifx/core` 1.2.0-rc.6 or later, which has devtools contract version 1.
+> Try it in the browser: [live example](https://motifjs-community.github.io/motifjs-devtools/).
 
 ![The panel docked under a MotifJS app, inspecting a row of the orders table](https://raw.githubusercontent.com/motifjs-community/motifjs-devtools/main/.github/assets/screenshots/hero.png)
 
