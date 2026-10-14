@@ -76,6 +76,31 @@ Light and dark themes follow the system, or are chosen in the header.
 `postMessage`, carrying JSON data only. The panel is a separate MotifJS app in its own iframe or window. It
 never touches the app's objects and never appears in the app's component tree.
 
+There are two ways to open the panel: as a **MotifJS** tab in the browser's DevTools with the extension, or
+docked in the page with the npm package. Both show the same panel.
+
+## Browser extension
+
+The extension adds a **MotifJS** tab to Chrome and Edge DevTools. The app only needs
+`app.useDevelopment(true)`; nothing is installed in the app.
+
+- The tab appears when the inspected page runs a MotifJS app in development mode. The toolbar icon is colored on
+  such a page, and its popup says which MotifJS version runs there.
+- A small detector on every page waits for the devtools contract without polling. The bridge is added to the page
+  only while the MotifJS tab is open and removed when DevTools closes. Reloading the page reconnects the tab.
+- The extension reads pages to find MotifJS apps, so the browser asks for access to all sites when it is
+  installed. Nothing leaves the browser.
+
+Until it is in the Chrome Web Store, build it from this repository and load it unpacked:
+
+```sh
+npm install
+npm run extension:build
+```
+
+Then open `chrome://extensions` (or `edge://extensions`), turn on **Developer mode**, choose **Load unpacked** and
+select the `dist-extension` folder. Chrome 111 or later, or Edge 111 or later, is needed.
+
 ## In-page panel
 
 ```sh

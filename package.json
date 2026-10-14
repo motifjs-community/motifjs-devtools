@@ -37,11 +37,12 @@
     "dev": "vite examples/basic",
     "build": "vite build && tsc -p tsconfig.build.json",
     "example:build": "vite build examples/basic",
+    "extension:build": "node scripts/build-extension.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint:jsx": "motif-lint",
-    "check": "npm run typecheck && npm run lint:jsx && npm test && npm run build && npm run example:build",
+    "check": "npm run typecheck && npm run lint:jsx && npm test && npm run build && npm run example:build && npm run extension:build",
     "prepublishOnly": "npm run check"
   },
   "peerDependencies": {

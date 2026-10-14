@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MotifJS DevTools</title>
+    <style>
+      :root { color-scheme: light dark; --accent: #6a55d6; --muted: #6b7079; }
+      @media (prefers-color-scheme: dark) { :root { --accent: #8b7cff; --muted: #9aa1ad; } }
+      body { width: 280px; margin: 0; padding: 14px 16px; font: 13px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+      header img { width: 28px; height: 28px; }
+      header b { font-size: 14px; }
+      #status { margin: 0 0 4px; font-weight: 600; }
+      #detail { margin: 0; color: var(--muted); }
+      body[data-found='true'] #status { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img src="icons/active-32.png" alt="" />
+      <b>MotifJS DevTools</b>
+    </header>
+    <p id="status">Checking this page…</p>
+    <p id="detail"></p>
+    <script type="module" src="./entries/popup.ts"></script>
+  </body>
+</html>
