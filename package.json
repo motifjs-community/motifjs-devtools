@@ -38,6 +38,7 @@
     "build": "vite build && tsc -p tsconfig.build.json",
     "example:build": "vite build examples/basic",
     "extension:build": "node scripts/build-extension.mjs",
+    "extension:zip": "npm run extension:build && node scripts/zip-extension.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
