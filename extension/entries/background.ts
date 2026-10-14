@@ -1,3 +1,4 @@
+import { extensionApi } from '../src/api';
 import { startRouter } from '../src/router';
 
-startRouter(chrome as never);
+startRouter(extensionApi() as never);

@@ -1,3 +1,4 @@
+import { extensionApi } from '../src/api';
 import type { Detection } from '../src/messages';
 
 const status = document.querySelector<HTMLElement>('#status')!;
@@ -20,10 +21,11 @@ const probe = (): Detection => {
 };
 
 async function main() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const api = extensionApi();
+  const [tab] = await api.tabs.query({ active: true, currentWindow: true });
   if (tab?.id === undefined) return show(false, 'No page', 'Open a page that runs a MotifJS app.');
   try {
-    const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: probe });
+    const [result] = await api.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: probe });
     const detection = result?.result;
     if (detection?.found) show(true, `MotifJS ${detection.coreVersion ?? ''}`.trim(), 'Open DevTools (F12) and choose the MotifJS tab.');
     else show(false, 'MotifJS not found', 'This page has no MotifJS app in development mode. Call app.useDevelopment(true) while developing.');

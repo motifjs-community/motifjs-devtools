@@ -81,7 +81,7 @@ docked in the page with the npm package. Both show the same panel.
 
 ## Browser extension
 
-The extension adds a **MotifJS** tab to Chrome and Edge DevTools. The app only needs
+The extension adds a **MotifJS** tab to Chrome, Edge and Firefox DevTools. The app only needs
 `app.useDevelopment(true)`; nothing is installed in the app.
 
 - The tab appears when the inspected page runs a MotifJS app in development mode. The toolbar icon is colored on
@@ -91,15 +91,18 @@ The extension adds a **MotifJS** tab to Chrome and Edge DevTools. The app only n
 - The extension reads pages to find MotifJS apps, so the browser asks for access to all sites when it is
   installed. Nothing leaves the browser.
 
-Until it is in the Chrome Web Store, build it from this repository and load it unpacked:
+Until it is in the browser stores, build it from this repository and load it from disk:
 
 ```sh
 npm install
 npm run extension:build
 ```
 
-Then open `chrome://extensions` (or `edge://extensions`), turn on **Developer mode**, choose **Load unpacked** and
-select the `dist-extension` folder. Chrome 111 or later, or Edge 111 or later, is needed.
+- **Chrome and Edge** (111 or later): open `chrome://extensions` (or `edge://extensions`), turn on **Developer
+  mode**, choose **Load unpacked** and select the `dist-extension` folder.
+- **Firefox** (128 or later): open `about:debugging`, choose **This Firefox**, then **Load Temporary Add-on…** and
+  select `dist-extension-firefox/manifest.json`. A temporary add-on stays until Firefox closes. If the MotifJS tab
+  does not appear, allow the extension to access all websites in `about:addons` under **Permissions**.
 
 ## In-page panel
 

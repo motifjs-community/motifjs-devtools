@@ -6,10 +6,14 @@ import { build } from 'vite';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const source = `${root}extension/`;
 const out = `${root}dist-extension/`;
+const firefoxOut = `${root}dist-extension-firefox/`;
+const GECKO_ID = 'devtools@motifjs.com';
+const FIREFOX_MIN = '128.0';
 const version = JSON.parse(readFileSync(`${root}package.json`, 'utf8')).version;
 const resolve = { extensions: ['.tsx', '.ts', '.jsx', '.js'], dedupe: ['@motifx/core'] };
 
 rmSync(out, { recursive: true, force: true });
+rmSync(firefoxOut, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
 await build({
@@ -45,9 +49,19 @@ for (const name of ['background', 'content', 'detector', 'page']) {
   });
 }
 
-const manifest = JSON.parse(readFileSync(`${source}manifest.json`, 'utf8'));
-manifest.version = version;
-writeFileSync(`${out}manifest.json`, `${JSON.stringify(manifest, null, 2)}\n`);
+const writeManifest = (dir, value) => writeFileSync(`${dir}manifest.json`, `${JSON.stringify(value, null, 2)}\n`);
+const manifest = { ...JSON.parse(readFileSync(`${source}manifest.json`, 'utf8')), version };
 cpSync(`${source}icons`, `${out}icons`, { recursive: true });
+writeManifest(out, manifest);
 
-console.log(`MotifJS DevTools ${version} extension written to dist-extension/`);
+cpSync(out, firefoxOut, { recursive: true });
+const { minimum_chrome_version: _chrome, ...firefox } = manifest;
+writeManifest(firefoxOut, {
+  ...firefox,
+  background: { scripts: [manifest.background.service_worker] },
+  browser_specific_settings: {
+    gecko: { id: GECKO_ID, strict_min_version: FIREFOX_MIN, data_collection_permissions: { required: ['none'] } },
+  },
+});
+
+console.log(`MotifJS DevTools ${version} extension written to dist-extension/ (Chrome, Edge) and dist-extension-firefox/ (Firefox)`);
