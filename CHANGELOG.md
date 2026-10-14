@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- Chrome and Edge extension with a MotifJS tab in DevTools, a toolbar icon and popup that show whether the page runs MotifJS in development mode, and the bridge added to the page only while the tab is open.
+
 ## [0.1.0] - 2026-10-14
 
 ### Added

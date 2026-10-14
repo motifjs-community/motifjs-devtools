@@ -21,6 +21,11 @@ It reads the devtools contract the core puts on `globalThis.__MOTIF_DEVTOOLS__` 
 - `scripts/panel.ts`: the Vite plugin behind `virtual:motif-devtools-panel`. In a build it compiles `src/panel` with
   its own copy of `@motifx/core` into one HTML page and exports it as a string; on the dev server it exports a page
   that loads `src/panel/main.tsx` from the server.
+- `extension/`: the Chrome and Edge extension (Manifest V3). `src/detect.ts` waits for `__MOTIF_DEVTOOLS__` on every
+  page, `src/relay.ts` is the content script between the page and the extension, `src/pageBridge.ts` runs the bridge
+  in the page while the MotifJS tab is open, `src/router.ts` is the service worker that pairs each DevTools tab with
+  its page, `src/panelPort.ts` is the panel's `Port`. `entries/` holds the scripts and pages the build starts from;
+  `scripts/build-extension.mjs` writes `dist-extension/`.
 - `examples/basic/`: a small shop that exercises every screen; each page says what to look at in the panel.
 
 ## Build / test / lint commands
@@ -31,6 +36,7 @@ It reads the devtools contract the core puts on `globalThis.__MOTIF_DEVTOOLS__` 
 - `npm run build`: library build of `src/index.ts` to `dist/index.js` and the panel to `dist/panel-[hash].js`, then
   `.d.ts` files.
 - `npm run dev` / `npm run example:build`: the demo in `examples/basic` with the in-page panel.
+- `npm run extension:build`: the extension to `dist-extension/`, ready to load unpacked.
 - `npm run check`: all of the above, in CI order. Read the build output too: compiler warnings such as
   `MJX001` show there.
 
