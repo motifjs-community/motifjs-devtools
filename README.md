@@ -145,12 +145,15 @@ export default {
   input: 'src/main.tsx',
   output: { dir: 'dist', format: 'es' },
   plugins: [
-    compiler({ storeNames: !production }),
+    compiler({ production, storeNames: !production }),
     nodeResolve({ extensions: ['.tsx', '.ts', '.jsx', '.js'] }),
     replace({ preventAssignment: true, values: { 'process.env.NODE_ENV': JSON.stringify(production ? 'production' : 'development') } }),
   ],
 };
 ```
+
+`production` also makes the compiler remove the development-only DevTools hooks of MotifJS from the production
+bundle.
 
 ### webpack
 
