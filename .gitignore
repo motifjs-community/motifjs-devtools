@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-extension/
+dist-extension-firefox/
 coverage/
 *.tgz
 .DS_Store

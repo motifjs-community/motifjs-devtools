@@ -1,3 +1,4 @@
+import { extensionApi } from '../src/api';
 import { startContentRelay } from '../src/relay';
 
-startContentRelay(window, chrome.runtime);
+startContentRelay(window, extensionApi().runtime);

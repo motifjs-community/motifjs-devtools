@@ -7,7 +7,8 @@ const check = () => {
   chrome.devtools.inspectedWindow.eval<boolean>(PROBE, (found) => {
     if (found !== true || created) return;
     created = true;
-    chrome.devtools.panels.create('MotifJS', 'icons/active-32.png', 'panel.html');
+    const query = new URLSearchParams({ tabId: String(chrome.devtools.inspectedWindow.tabId), theme: chrome.devtools.panels.themeName ?? 'default' });
+    chrome.devtools.panels.create('MotifJS', 'icons/active-32.png', `panel.html?${query}`);
   });
 };
 

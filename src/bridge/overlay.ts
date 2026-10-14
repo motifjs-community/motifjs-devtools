@@ -30,9 +30,15 @@ export function createOverlay(doc: Document = document): Overlay {
     if (host !== null && host.isConnected) return;
     host = doc.createElement(OVERLAY_TAG);
     const root = host.attachShadow({ mode: 'open' });
-    root.innerHTML = `<style>${STYLES}</style><div class="box" hidden></div><div class="label" hidden></div>`;
-    box = root.querySelector('.box');
-    label = root.querySelector('.label');
+    const style = doc.createElement('style');
+    style.textContent = STYLES;
+    box = doc.createElement('div');
+    box.className = 'box';
+    box.hidden = true;
+    label = doc.createElement('div');
+    label.className = 'label';
+    label.hidden = true;
+    root.append(style, box, label);
     doc.documentElement.appendChild(host);
   };
 
@@ -43,10 +49,9 @@ export function createOverlay(doc: Document = document): Overlay {
       label!.hidden = false;
       Object.assign(box!.style, { left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` });
       const [name, rest] = text.split('\u0000');
-      label!.innerHTML = '';
       const strong = doc.createElement('b');
       strong.textContent = name;
-      label!.append(strong, doc.createTextNode(rest ? ` ${rest}` : ''));
+      label!.replaceChildren(strong, doc.createTextNode(rest ? ` ${rest}` : ''));
       const below = rect.top < 28;
       label!.style.left = `${Math.max(4, rect.left)}px`;
       label!.style.top = below ? `${rect.top + rect.height + 4}px` : `${rect.top - 24}px`;

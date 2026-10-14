@@ -63,3 +63,5 @@ declare namespace chrome {
     }
   }
 }
+
+declare const browser: typeof chrome | undefined;
