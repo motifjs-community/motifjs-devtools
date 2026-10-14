@@ -14,7 +14,7 @@ const APP_LINKS: NavLink[] = [
 ];
 
 const ROUTER_LINKS: NavLink[] = [
-  { to: '/reports/daily', text: 'Nested route' },
+  { to: '/reports', text: 'Nested route' },
   { to: '/analytics/weekly', text: 'Alias' },
   { to: '/login', text: 'Redirect' },
   { to: '/missing', text: 'Not found' },
