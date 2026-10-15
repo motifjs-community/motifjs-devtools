@@ -2,7 +2,7 @@ const svg = (body: string) =>
   `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 
 export const ICONS = {
-  logo: '<svg viewBox="0 0 236 236" width="22" height="22" fill="#8B7CFF" aria-hidden="true"><path d="M118 20 158 60 136 82 118 64 100 82 78 60Z"/><path d="m216 118-40 40-22-22 18-18-18-18 22-22Z"/><path d="m118 216-40-40 22-22 18 18 18-18 22 22Z"/><path d="m20 118 40-40 22 22-18 18 18 18-22 22Z"/></svg>',
+  logo: '<svg viewBox="0 0 236 236" width="22" height="22" aria-hidden="true"><path fill="var(--dt-brand, #ff8f66)" d="M118 0 236 118 174 118 118 62 62 118 0 118Z"/><path fill="currentColor" d="M118 236 0 118 62 118 118 174 174 118 236 118Z"/></svg>',
   home: svg('<path d="M2 7.5 8 2.5l6 5"/><path d="M3.5 6.5v7h9v-7"/><path d="M6.5 13.5v-4h3v4"/>'),
   star: svg('<path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6l-3.8 2 .7-4.3-3.1-3 4.3-.6z"/>'),
   code: svg('<path d="m5.5 4.5-3.5 3.5 3.5 3.5"/><path d="m10.5 4.5 3.5 3.5-3.5 3.5"/><path d="m9 2.5-2 11"/>'),

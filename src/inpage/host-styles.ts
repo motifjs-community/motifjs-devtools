@@ -1,4 +1,4 @@
-export const LOGO_SVG = '<svg viewBox="0 0 236 236" width="22" height="22" fill="#8B7CFF" aria-hidden="true"><path d="M118 20 158 60 136 82 118 64 100 82 78 60Z"/><path d="m216 118-40 40-22-22 18-18-18-18 22-22Z"/><path d="m118 216-40-40 22-22 18 18 18-18 22 22Z"/><path d="m20 118 40-40 22 22-18 18 18 18-22 22Z"/></svg>';
+export const LOGO_SVG = '<svg viewBox="0 0 236 236" width="22" height="22" aria-hidden="true"><path fill="#ff8f66" d="M118 0 236 118 174 118 118 62 62 118 0 118Z"/><path fill="#f8f7f3" d="M118 236 0 118 62 118 118 174 174 118 236 118Z"/></svg>';
 
 export const HOST_STYLES = `
 :host { all: initial; }

@@ -10,7 +10,7 @@ const STYLES = `
 :host { all: initial; }
 .box {
   position: fixed; z-index: 2147483645; pointer-events: none; box-sizing: border-box;
-  border: 1px solid #8b7cff; background: rgba(139, 124, 255, 0.18); border-radius: 2px;
+  border: 1px solid #e4572e; background: rgba(228, 87, 46, 0.18); border-radius: 2px;
 }
 .label {
   position: fixed; z-index: 2147483645; pointer-events: none; white-space: nowrap;

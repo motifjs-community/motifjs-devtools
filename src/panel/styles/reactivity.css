@@ -76,7 +76,7 @@
 }
 
 .dt-card.purple {
-  border-top-color: #8b7cff;
+  border-top-color: var(--dt-purple);
 }
 
 .dt-card.green {
@@ -201,7 +201,7 @@
   display: block;
   height: 100%;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--dt-accent), #8b7cff);
+  background: linear-gradient(90deg, var(--dt-accent), var(--dt-purple));
 }
 
 .dt-flush.open .dt-flush-row {

@@ -13,7 +13,8 @@
   --dt-ok: #1f883d;
   --dt-warn: #9a6700;
   --dt-danger: #cf222e;
-  --dt-purple: #6a55d6;
+  --dt-purple: #c24523;
+  --dt-brand: #c24523;
   --dt-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --dt-mono: ui-monospace, 'Cascadia Code', Consolas, 'SF Mono', Menlo, monospace;
   --dt-row: 28px;
@@ -39,7 +40,8 @@
     --dt-ok: #4ec94e;
     --dt-warn: #e5c07b;
     --dt-danger: #f48771;
-    --dt-purple: #8b7cff;
+    --dt-purple: #ff8f66;
+  --dt-brand: #ff8f66;
     --dt-syntax-string: #ce9178;
     --dt-syntax-number: #b5cea8;
     --dt-syntax-function: #dcdcaa;
@@ -62,7 +64,8 @@
   --dt-ok: #4ec94e;
   --dt-warn: #e5c07b;
   --dt-danger: #f48771;
-  --dt-purple: #8b7cff;
+  --dt-purple: #ff8f66;
+  --dt-brand: #ff8f66;
   --dt-syntax-string: #ce9178;
   --dt-syntax-number: #b5cea8;
   --dt-syntax-function: #dcdcaa;
