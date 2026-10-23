@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-23
+
+### Changed
+
+- The panel, the in-page button, the element overlay, the extension popup and the toolbar icons use the MotifJS mark and its orange accent.
+- The panel is built with MotifJS 1.2.0-rc.18.
+- The Rollup setup in the README passes `production` to the compiler, which leaves the development-only DevTools hooks of MotifJS out of production bundles.
+
 ## [0.2.0] - 2026-10-14
 
 ### Added
