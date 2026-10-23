@@ -64,7 +64,7 @@ function TypeTable(props: { types: () => TypeStat[]; empty: string }) {
   );
 }
 
-function EntryDetail(props: { entry: TimelineEntry; stores: StoresModel | undefined }) {
+function EntryDetail(props: { entry: TimelineEntry; stores: StoresModel | null }) {
   const { entry, stores } = props;
   if (entry.kind === 'navigation') {
     const facts = [
@@ -111,7 +111,7 @@ function EntryDetail(props: { entry: TimelineEntry; stores: StoresModel | undefi
   );
 }
 
-function EntryRow(props: { entry: TimelineEntry; model: PerformanceModel; stores: StoresModel | undefined }) {
+function EntryRow(props: { entry: TimelineEntry; model: PerformanceModel; stores: StoresModel | null }) {
   const { entry, model, stores } = props;
   const open = () => model.state.expanded === entry.id;
   const width = () => {

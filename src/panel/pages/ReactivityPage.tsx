@@ -6,7 +6,7 @@ import { StoresModel } from '../model/StoresModel';
 
 const integer = (value: number | undefined) => (value === undefined ? '–' : value.toLocaleString('en-US'));
 
-export const triggerText = (trigger: FlushTrigger, stores: StoresModel | undefined) => {
+export const triggerText = (trigger: FlushTrigger, stores: StoresModel | null) => {
   if (trigger.store !== undefined) {
     const name = stores?.nameOf(trigger.store.id) ?? `store#${trigger.store.id}`;
     return [name, ...trigger.store.path, trigger.key].join('.');
@@ -31,7 +31,7 @@ function StatCard(props: { tone: string; label: string; value: () => string; not
   );
 }
 
-function FlushRow(props: { flush: Flush; model: ReactivityModel; devtools: DevtoolsModel; stores: StoresModel | undefined }) {
+function FlushRow(props: { flush: Flush; model: ReactivityModel; devtools: DevtoolsModel; stores: StoresModel | null }) {
   const { flush, model, devtools, stores } = props;
   const open = () => model.state.expanded === flush.id;
   const width = () => {
