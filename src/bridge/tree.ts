@@ -10,6 +10,7 @@ export interface TreeStream {
   slice(records: TreeRecord[]): void;
   done(count: number): void;
   fail(error: unknown): void;
+  name?(path: number[], node: TreeNodeLike): string | undefined;
 }
 
 const flagsOf = (node: TreeNodeLike) =>
@@ -21,7 +22,7 @@ const flagsOf = (node: TreeNodeLike) =>
 
 const childCountOf = (node: TreeNodeLike) => (typeof node.childCount === 'number' && node.childCount > 0 ? node.childCount : 0);
 
-const recordOf = (path: number[], node: TreeNodeLike): TreeRecord => {
+const recordOf = (path: number[], node: TreeNodeLike, out: TreeStream): TreeRecord => {
   const record: TreeRecord = [
     path.length,
     path.length === 0 ? 0 : path[path.length - 1],
@@ -31,7 +32,8 @@ const recordOf = (path: number[], node: TreeNodeLike): TreeRecord => {
     childCountOf(node),
     typeof node.document === 'number' ? node.document : 0,
   ];
-  if (typeof node.title === 'string' && node.title !== '') record.push(node.title);
+  const title = typeof node.title === 'string' && node.title !== '' ? node.title : out.name?.(path, node);
+  if (title !== undefined && title !== '') record.push(title);
   return record;
 };
 
@@ -53,7 +55,7 @@ export function streamTree(read: ReadTree, out: TreeStream, task: (run: () => vo
           out.done(0);
           return;
         }
-        records.push(recordOf([], root));
+        records.push(recordOf([], root, out));
         count++;
         if (childCountOf(root) > 0) stack.push({ path: [], next: 0, count: childCountOf(root) });
       }
@@ -69,7 +71,7 @@ export function streamTree(read: ReadTree, out: TreeStream, task: (run: () => vo
           top.next = top.count;
           continue;
         }
-        records.push(recordOf(path, node));
+        records.push(recordOf(path, node, out));
         count++;
         if (childCountOf(node) > 0) stack.push({ path, next: 0, count: childCountOf(node) });
       }

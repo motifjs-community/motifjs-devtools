@@ -1,7 +1,7 @@
 import { Component, FromService, Virtualization } from '@motifx/core';
 import { formatPath } from '../format';
 import { DevtoolsModel } from '../model/DevtoolsModel';
-import { ElementsModel, type Row } from '../model/ElementsModel';
+import { ElementsModel, documentCaption, type Row } from '../model/ElementsModel';
 import { PropNode, Value } from '../ValueTree';
 
 const visibilityGlyph = (visible: boolean | undefined) => (visible ? '◉' : '○');
@@ -40,7 +40,7 @@ function TreeRow(props: { row: Row; model: ElementsModel }) {
       <span class="dt-row-title" x-display={() => row.title !== null}>{() => row.title ?? ''}</span>
       <span class="dt-flag away" x-display={() => row.away !== null} title="The element lives in another document">{() => row.away ?? ''}</span>
       <span class="dt-flag hosted" x-display={() => row.hosted > 0} title="Components from the page tree whose elements live here">{() => `${row.hosted} hosted`}</span>
-      <span class="dt-flag mirror" x-display={() => row.mirror} title="Its place in the component tree is under the page root; this row follows the same component">page tree</span>
+      <span class="dt-flag mirror" x-display={() => row.mirror && row.entry} title="Its place in the component tree is under the page root; this row follows the same component">page tree</span>
       <span class="dt-fill"></span>
       <span class="dt-flag waiting" x-display={() => row.waiting}>WAITING</span>
       <span class="dt-flag hidden" x-display={() => !row.visible && !row.waiting}>HIDDEN</span>
@@ -315,6 +315,10 @@ export class ElementsPage extends Component<HTMLElement> {
           <div class="dt-tree-head">
             <span>COMPONENT TREE</span>
             <span>{() => `${m.state.rowCount} / ${m.state.total} NODES`}</span>
+          </div>
+          <div class="dt-tree-docs" x-display={() => m.state.documents.length > 1} title="The documents of the app, in the order the tree counts them">
+            <span>DOCUMENTS</span>
+            <span>{() => m.state.documents.map(documentCaption).join(' · ')}</span>
           </div>
           <div class="dt-tree" role="tree" onmouseleave={() => m.hover(null)}>
             {this.list}

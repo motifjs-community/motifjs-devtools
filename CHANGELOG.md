@@ -10,17 +10,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+- Elements shows every root of the app: the `run()` shell, the page layer (`app.layer`) and each window opened or attached through `app.windows`, with the window's title. A window row counts the components the app moved into that window by hand (`N hosted`) and walks their trees under it. The documents of the app are listed under the tree head, and a row whose element lives in another document carries that document's name: its title, else its frame's title, name or id (a window's name), else `iframe` or `window`. The row of an `<iframe>` element always shows the frame's title, name or id; when its document is connected the row also counts the components moved into it and walks their trees under it, as a window row does. The document badge sits on the first row of a subtree that lives elsewhere, not on every row under it.
+- Select in the page works in every document of the app: the highlight is drawn in the element's own document and picking works inside popups, Picture-in-Picture windows and connected iframes.
 - `client.stream()` for answers that arrive in slices, the `readTree` page method and the `chunk` and `cancel` messages behind it.
 - `client.shown` and `client.onShown()`: the in-page panel learns when it is closed and opened again (`visibility` message), and the extension panel when its DevTools tab is hidden and shown.
 - The `scheduler` option of `createBridge`.
 
 ### Changed
 
-- The panel is built with MotifJS 1.2.0-rc.21.
+- The panel follows devtools contract version 2 (paths start with the root's index, `getDocuments()`, `documents:changed`) and still works with a contract 1 core, which it reads as a single-root tree.
+- A root cannot be hidden from Elements; the visibility button is left out for roots.
+- The panel is built with MotifJS 1.2.0-rc.22.
 - The bridge queues the app's events while the page works and sends them after the next frame, in messages of up to 500 events. An open panel no longer delays building or leaving a page.
 - Events are sent as `{ kind: 'events', events }` (`BridgeEvents`) instead of one `{ kind: 'event', event }` message (`BridgeEvent`) per event.
 - Elements reads the tree in slices of 500 components, computes its rows in slices and shows them in a virtual list. Opening it on a page with tens of thousands of components no longer blocks the page or the panel.
 - The panel reads from the page only while it is shown and while the screen that shows the data is open, at most every 250 ms or four times as long as the previous read took.
+
+### Fixed
+
+- Switching to Stores, Reactivity, Services or Routes stalled on an app with many stores: every row scanned the reactive store list on each read. Rows are looked up by id.
+- Opening Stores while a store was leaving the list threw `MJX208`.
 
 ## [0.3.0] - 2026-10-23
 

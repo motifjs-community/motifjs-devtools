@@ -1,5 +1,5 @@
 import { reactive } from '@motifx/core';
-import { TREE_FLAGS, type TreeRecord } from '../../bridge/protocol';
+import { TREE_FLAGS, type DocumentRecord, type TreeRecord } from '../../bridge/protocol';
 import { taskRunner, type Cancel } from '../../bridge/schedule';
 import type { Client, Stream } from '../../client/client';
 import { pathKey } from '../format';
@@ -37,6 +37,7 @@ export type Row = {
   away: string | null;
   hosted: number;
   mirror: boolean;
+  entry: boolean;
 };
 
 export type Inspection = Omit<TreeNode, 'children'> & {
@@ -60,12 +61,19 @@ const valueKey = (origin: ValueOrigin, keys: readonly string[]) => origin + '' 
 
 const PLAIN_TYPES = new Set(['Component', 'FragmentNode']);
 const AUTO_EXPAND_ROWS = 400;
-const TREE_EVENTS = new Set(['tree:changed', 'component:built', 'component:visibility', 'component:wait', 'component:disposed']);
+const TREE_EVENTS = new Set(['tree:changed', 'documents:changed', 'component:built', 'component:visibility', 'component:wait', 'component:disposed']);
 export const ROWS_SLICE = 2000;
 
 export const isNamed = (type: string) => !PLAIN_TYPES.has(type);
 export const isForest = (node: TreeNode) => node.path.length === 0 && node.tag === '#roots';
 export const rootsOf = (tree: TreeNode) => (isForest(tree) ? tree.children ?? [] : [tree]);
+const documentKind = (doc: DocumentRecord) => (doc.kind === 'frame' ? 'iframe' : 'window');
+export const documentLabel = (doc: DocumentRecord) =>
+  doc.kind === 'page' ? 'page' : doc.title !== '' ? doc.title : doc.name !== '' ? doc.name : doc.url === '' || doc.url.startsWith('about:') ? documentKind(doc) : doc.url;
+export const documentCaption = (doc: DocumentRecord) => {
+  const label = documentLabel(doc);
+  return doc.kind === 'page' || label === documentKind(doc) ? label : `${label} (${documentKind(doc)})`;
+};
 
 let runTask: ((run: () => void) => Cancel) | null = null;
 const nextTask = () => new Promise<void>((resolve) => void (runTask ??= taskRunner())(resolve));
@@ -120,6 +128,7 @@ export class ElementsModel {
     error: null as string | null,
     revealed: 0,
     values: {} as Record<string, ValueNode>,
+    documents: [] as DocumentRecord[],
   });
 
   rows: Row[] = [];
@@ -169,6 +178,7 @@ export class ElementsModel {
 
   private async readTree() {
     const builder = treeBuilder();
+    const documents = this.readDocuments();
     const stream = this.client.stream<TreeRecord[]>('readTree', (records) => builder.add(records));
     this.stream = stream;
     try {
@@ -183,8 +193,13 @@ export class ElementsModel {
     }
     this.tree = builder.root;
     this.state.error = null;
+    this.state.documents = await documents;
     await this.rebuildRows();
     if (this.state.selected !== null) void this.inspectReader.request(true);
+  }
+
+  private readDocuments(): Promise<DocumentRecord[]> {
+    return this.client.request<DocumentRecord[]>('getDocuments').then((list) => (Array.isArray(list) ? list : []), () => []);
   }
 
   toggle(row: Row) {
@@ -350,12 +365,24 @@ export class ElementsModel {
     const budget = { rows: 0 };
     const roots = tree === null ? [] : rootsOf(tree);
     const labels = new Map<number, string>();
-    for (const root of roots) if (root.document !== 0) labels.set(root.document, root.title || `${root.type} ${root.document}`);
+    const frames = new Map<string, DocumentRecord>();
+    for (const doc of this.state.documents) {
+      if (doc.index !== 0) labels.set(doc.index, documentLabel(doc));
+      if (doc.frame !== undefined) frames.set(pathKey(doc.frame), doc);
+    }
+    const frameNodes = new Map<TreeNode, number>();
+    const frameOf = (node: TreeNode) => (frames.size === 0 ? undefined : frames.get(pathKey(node.path)));
+    const titleOf = (node: TreeNode) => {
+      if (node.title !== undefined) return node.title;
+      const doc = frameOf(node);
+      return doc === undefined ? undefined : documentLabel(doc);
+    };
+    for (const root of roots) if (root.document !== 0) labels.set(root.document, root.title || labels.get(root.document) || `${root.type} ${root.document}`);
     const awayOf = (node: TreeNode, rootDocument: number) => (node.document === rootDocument ? null : labels.get(node.document) ?? `document ${node.document}`);
     const hostedByDocument = new Map<number, number>();
     const hostedTops = new Map<number, TreeNode[]>();
-    const matches = (node: TreeNode) => query === '' || node.type.toLowerCase().includes(query) || node.tag.toLowerCase().includes(query) || (node.title !== undefined && node.title.toLowerCase().includes(query));
-    const shown = (node: TreeNode, away: string | null) => (!hidePlain || isNamed(node.type) || roots.includes(node)) && (matches(node) || (away !== null && away.toLowerCase().includes(query)));
+    const matches = (node: TreeNode) => query === '' || node.type.toLowerCase().includes(query) || node.tag.toLowerCase().includes(query) || (titleOf(node)?.toLowerCase().includes(query) ?? false);
+    const shown = (node: TreeNode, away: string | null) => (!hidePlain || isNamed(node.type) || roots.includes(node) || frameNodes.has(node)) && (matches(node) || (away !== null && away.toLowerCase().includes(query)));
     const showsAny = new Map<TreeNode, boolean>();
     const current = () => ticket === this.rowsTicket && tree === this.tree;
 
@@ -380,6 +407,8 @@ export class ElementsModel {
             else hostedTops.set(node.document, [node]);
           }
         }
+        const frame = frameOf(node);
+        if (frame !== undefined) frameNodes.set(node, frame.index);
         showsAny.set(node, children.some((child) => shown(child, awayOf(child, rootDocument)) || showsAny.get(child) === true));
         if (++work % ROWS_SLICE === 0) {
           await nextTask();
@@ -391,25 +420,31 @@ export class ElementsModel {
         const tops = hostedTops.get(root.document) ?? [];
         if (tops.some((top) => shown(top, null) || showsAny.get(top) === true)) showsAny.set(root, true);
       }
+      for (const [frameNode, doc] of frameNodes) {
+        const tops = hostedTops.get(doc) ?? [];
+        if (tops.some((top) => shown(top, null) || showsAny.get(top) === true)) showsAny.set(frameNode, true);
+      }
 
-      type Visit = [TreeNode, number, number, string | null];
-      const visits: Visit[] = roots.map((root) => [root, 0, root.document, null] as Visit).reverse();
+      type Visit = [TreeNode, number, number, string | null, number | null, boolean];
+      const visits: Visit[] = roots.map((root) => [root, 0, root.document, null, null, false] as Visit).reverse();
       while (visits.length > 0) {
-        const [node, depth, rootDocument, prefix] = visits.pop()!;
-        const away = prefix === null ? awayOf(node, rootDocument) : null;
-        const show = shown(node, away);
+        const [node, depth, rootDocument, prefix, parentDocument, top] = visits.pop()!;
+        const label = prefix === null ? awayOf(node, rootDocument) : null;
+        const show = shown(node, label);
+        const away = label !== null && parentDocument !== node.document ? label : null;
         const children = node.children ?? [];
         const isRoot = prefix === null && roots.includes(node);
-        const tops = isRoot && node.document !== 0 ? hostedTops.get(node.document) ?? [] : [];
+        const holds = isRoot && node.document !== 0 ? node.document : prefix === null ? frameNodes.get(node) : undefined;
+        const tops = holds === undefined ? [] : hostedTops.get(holds) ?? [];
         const key = (prefix === null ? '' : prefix + '>') + pathKey(node.path);
         let expanded = true;
         if (show) {
           budget.rows++;
           const hasChildren = showsAny.get(node) === true;
           expanded = hasChildren && (query !== '' || this.isExpanded(key, budget));
-          const hosted = isRoot ? hostedByDocument.get(node.document) ?? 0 : 0;
+          const hosted = holds === undefined ? 0 : hostedByDocument.get(holds) ?? 0;
           if (prefix === null) rowCount++;
-          next.push({ key, path: node.path, depth, type: node.type, tag: node.tag, named: isNamed(node.type), visible: node.visible, waiting: node.waiting, connected: node.connected, hasChildren, expanded, title: node.title ?? null, away, hosted, mirror: prefix !== null });
+          next.push({ key, path: node.path, depth, type: node.type, tag: node.tag, named: isNamed(node.type), visible: node.visible, waiting: node.waiting, connected: node.connected, hasChildren, expanded, title: titleOf(node) ?? null, away, hosted, mirror: prefix !== null, entry: top || away !== null });
         }
         if (++work % ROWS_SLICE === 0) {
           await nextTask();
@@ -417,8 +452,9 @@ export class ElementsModel {
         }
         if (!expanded && show) continue;
         const childDepth = show ? depth + 1 : depth;
-        for (let i = tops.length - 1; i >= 0; i--) visits.push([tops[i], childDepth, node.document, key]);
-        for (let i = children.length - 1; i >= 0; i--) visits.push([children[i], childDepth, rootDocument, prefix]);
+        const childParentDocument = show ? node.document : parentDocument;
+        for (let i = tops.length - 1; i >= 0; i--) visits.push([tops[i], childDepth, holds!, key, null, true]);
+        for (let i = children.length - 1; i >= 0; i--) visits.push([children[i], childDepth, rootDocument, prefix, childParentDocument, false]);
       }
     }
 
