@@ -92,7 +92,7 @@ describe('bridge', () => {
   it('returns JSON-safe results for reads', async () => {
     runApp();
     start();
-    for (const method of ['getTree', 'getCounters', 'getWarnings', 'getErrors', 'getStores', 'getServices', 'getScopes', 'getNavigations', 'getExtensions']) {
+    for (const method of ['getTree', 'getDocuments', 'getCounters', 'getWarnings', 'getErrors', 'getStores', 'getServices', 'getScopes', 'getNavigations', 'getExtensions']) {
       const response = await call(method);
       expect(response.ok, method).toBe(true);
       const value = (response as { value: unknown }).value;
@@ -102,6 +102,29 @@ describe('bridge', () => {
     expect(tree.value).toMatchObject({ path: [] });
     const inspected = await call('inspect', []);
     expect(inspected.ok).toBe(true);
+  });
+
+  it('describes the documents of the app as records', async () => {
+    const root = runApp();
+    start();
+    const holder = new Component('iframe');
+    root.controls.add(holder);
+    const frame = holder.element as HTMLIFrameElement;
+    frame.name = 'preview';
+    frame.title = 'Order preview';
+    const loose = document.body.appendChild(document.createElement('iframe'));
+    loose.id = 'help';
+    const release = app!.connectDocument(frame.contentDocument!);
+    const releaseLoose = app!.connectDocument(loose.contentDocument!);
+    const response = (await call('getDocuments')) as { value: { index: number; title: string; name: string; url: string; kind: string; frame?: number[] }[] };
+    expect(response.value).toEqual([
+      { index: 0, title: document.title, name: '', url: document.URL, kind: 'page' },
+      { index: 1, title: '', name: 'Order preview', url: 'about:blank', kind: 'frame', frame: [0, 0, 1] },
+      { index: 2, title: '', name: 'help', url: 'about:blank', kind: 'frame' },
+    ]);
+    release();
+    releaseLoose();
+    expect(((await call('getDocuments')) as { value: unknown[] }).value).toHaveLength(1);
   });
 
   it('keeps the holder path of a store whole and sends its value shallow', async () => {

@@ -2,7 +2,7 @@
 
 `motifjs-devtools` is a developer tools panel for **MotifJS** (`@motifx/core`), the fine-grained reactive UI framework without a virtual DOM.
 
-> **Status:** early release. It needs `@motifx/core` 1.2.0-rc.6 or later, which has devtools contract version 1.
+> **Status:** early release. It needs `@motifx/core` 1.2.0-rc.6 or later (devtools contract version 1); windows, the page layer and the documents of the app need a core with contract version 2.
 > Try it in the browser: [live example](https://motifjs-community.github.io/motifjs-devtools/).
 
 ![The panel docked under a MotifJS app, inspecting a row of the orders table](https://raw.githubusercontent.com/motifjs-community/motifjs-devtools/main/.github/assets/screenshots/hero.png)
@@ -16,7 +16,10 @@
   by name, plain elements can be hidden with one button. Search by name or tag, `WAITING` / `HIDDEN`
   badges, and whether each component is in the document. The inspector lists props and the component's own
   fields such as `state` (opened one level at a time, getters are never called), bindings, classes (add and remove), attributes, events, hooks, services,
-  effects and data from community packages, and can show or hide the component.
+  effects and data from community packages, and can show or hide the component. The tree has a root for the
+  `run()` shell, for the page layer and for every window opened or attached through `app.windows`; a window row
+  shows the components the app moved into it by hand; the app's documents are listed under the tree head, and a
+  row names the document its element lives in.
 - **Select in the page.** Point at something in the app to highlight its component, click to select it in
   the tree. Hovering a tree row highlights the component in the page.
 - **Reactivity.** Total effect runs, flushes, the last and the slowest flush, live effects, and a timeline of

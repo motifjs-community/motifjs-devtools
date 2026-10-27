@@ -9,6 +9,7 @@ import {
   type BridgeMessage,
   type BridgeRequest,
   type BridgeStatus,
+  type DocumentRecord,
   type PageMemory,
 } from './protocol';
 import { adaptLegacy } from './legacy';
@@ -78,8 +79,35 @@ const treeShape = (node: unknown): unknown => {
   return out;
 };
 
-const SHAPES: Record<string, (value: unknown) => unknown> = {
+type FrameElement = { title?: unknown; name?: unknown; id?: unknown };
+
+const text = (...values: unknown[]) => (values.find((value) => typeof value === 'string' && value !== '') as string | undefined) ?? '';
+
+const documentRecord = (doc: unknown, index: number, api: Contract): DocumentRecord => {
+  const out: DocumentRecord = { index, title: '', name: '', url: '', kind: index === 0 ? 'page' : 'window' };
+  if (typeof doc !== 'object' || doc === null) return out;
+  try {
+    const { title, URL: url, defaultView } = doc as { title?: unknown; URL?: unknown; defaultView?: { frameElement?: FrameElement | null; name?: unknown } | null };
+    if (typeof title === 'string') out.title = title;
+    if (typeof url === 'string') out.url = url;
+    if (index > 0 && defaultView != null) {
+      const frame = defaultView.frameElement;
+      if (frame != null) {
+        out.kind = 'frame';
+        out.name = text(frame.title, frame.name, frame.id);
+        const path = typeof api.pathOfElement === 'function' ? (api.pathOfElement as (node: unknown) => unknown).call(api, frame) : null;
+        if (Array.isArray(path) && typeof api.getElement === 'function' && (api.getElement as (path: unknown) => unknown).call(api, path) === frame) out.frame = path.map(Number);
+      } else out.name = text(defaultView.name);
+    }
+  } catch {
+    return out;
+  }
+  return out;
+};
+
+const SHAPES: Record<string, (value: unknown, api: Contract) => unknown> = {
   getTree: treeShape,
+  getDocuments: (value, api) => (Array.isArray(value) ? value.map((doc, index) => documentRecord(doc, index, api)) : []),
   getRoutes: routeShape,
   getStores: (value) =>
     Array.isArray(value)
@@ -152,6 +180,14 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
     const contract = api;
     if (contract === null || typeof contract.getTree !== 'function') return reply(id, false, contract === null ? 'not-connected' : 'unknown-method');
     const getTree = contract.getTree as (path: number[], depth: number) => never;
+    const frameName = (path: number[]) => {
+      if (typeof contract.getElement !== 'function') return undefined;
+      const element = (contract.getElement as (path: number[]) => unknown).call(contract, path);
+      if (typeof element !== 'object' || element === null) return undefined;
+      const { title, name, id } = element as FrameElement;
+      const value = text(title, name, id);
+      return value === '' ? undefined : value;
+    };
     streams.get(id)?.();
     streams.set(
       id,
@@ -165,6 +201,7 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
           streams.delete(id);
           reply(id, false, error instanceof Error ? error.message : error);
         },
+        name: (path, node) => (node.tag === 'iframe' ? frameName(path) : undefined),
       }, scheduler.task),
     );
   };
@@ -213,7 +250,7 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
       try {
         const value = await method.apply(api, Array.isArray(request.args) ? request.args : []);
         const shape = SHAPES[request.method];
-        reply(request.id, true, shape !== undefined ? shape(value) : toTransfer(value, DEPTH[request.method] ?? 4));
+        reply(request.id, true, shape !== undefined ? shape(value, api) : toTransfer(value, DEPTH[request.method] ?? 4));
       } catch (error) {
         reply(request.id, false, error instanceof Error ? error.message : error);
       }

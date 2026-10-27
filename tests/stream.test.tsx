@@ -126,6 +126,20 @@ describe('readTree', () => {
     expect(() => structuredClone(chunks)).not.toThrow();
   });
 
+  it('names an iframe row from its title, name or id', async () => {
+    const root = run(2);
+    const frames = [new Component('iframe'), new Component('iframe'), new Component('iframe'), new Component('iframe')];
+    (frames[0].element as HTMLIFrameElement).title = 'Order preview';
+    (frames[1].element as HTMLIFrameElement).name = 'help';
+    (frames[2].element as HTMLIFrameElement).id = 'chat';
+    root.controls.add(...frames);
+    bridge = createBridge({ send: (message) => messages.push(message), scheduler: microScheduler });
+    await bridge.handle({ channel: CHANNEL, kind: 'request', id: 2, method: 'readTree', args: [] });
+    await drain(20);
+    const records = messages.filter((m): m is Extract<BridgeMessage, { kind: 'chunk' }> => m.kind === 'chunk' && m.id === 2).flatMap((chunk) => chunk.value as TreeRecord[]);
+    expect(records.filter((record) => record[3] === 'iframe').map((record) => record[7])).toEqual(['Order preview', 'help', 'chat', undefined]);
+  });
+
   it('stops streaming when the panel cancels', async () => {
     run(TREE_SLICE * 3);
     bridge = createBridge({ send: (message) => messages.push(message), scheduler: microScheduler });

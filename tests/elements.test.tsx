@@ -62,6 +62,7 @@ function fakeClient(tree: TestNode = TREE) {
       if (method === 'setClass' || method === 'setVisible') return { ok: true } as T;
       if (method === 'readValue' && JSON.stringify(args[2]) === '["broken"]') return { ok: false, error: 'getter' } as T;
       if (method === 'readValue') return { ok: true, value: { entries: [{ key: 'id', value: 7 }, { key: 'meta', value: { kind: 'object', type: 'Object', keys: 1 } }], total: 5 } } as T;
+      if (method === 'getDocuments') return (tree === TREE ? [DOCUMENTS[0]] : DOCUMENTS) as T;
       return [] as T;
     },
     shown: true,
@@ -110,6 +111,17 @@ async function render(tree?: TestNode) {
 
 const rowTexts = (root: HTMLElement) => [...root.querySelectorAll('.dt-row')].map((row) => row.textContent?.replace(/\s+/g, ' ').trim());
 
+const DOCUMENTS = [
+  { index: 0, title: 'Motif Shop', name: '', url: 'http://localhost/', kind: 'page' },
+  { index: 1, title: 'Notlar', name: 'notes', url: 'http://localhost/notes', kind: 'window' },
+  { index: 2, title: '', name: 'Order preview', url: 'about:srcdoc', kind: 'frame', frame: [0, 0, 1] },
+  { index: 3, title: '', name: '', url: 'about:blank', kind: 'frame' },
+];
+
+const FRAMED = node([], 'Application', '#roots', [
+  node([0], 'Component', 'div', [node([0, 0], 'AppShell', 'div', [node([0, 0, 0], 'Preview', 'figure', [node([0, 0, 0, 0], 'Component', 'strong', [], { document: 2 })], { document: 2 }), node([0, 0, 1], 'Component', 'iframe')])]),
+]);
+
 const FOREST = node([], 'Application', '#roots', [
   node([0], 'Component', 'div', [node([0, 0], 'AppShell', 'div', [node([0, 0, 0], 'StatCard', 'article', [], { document: 1 })])]),
   node([1], 'Window', 'body', [node([1, 0], 'NoteEditor', 'section', [], { document: 1 })], { document: 1, title: 'Notlar' }),
@@ -128,6 +140,29 @@ describe('ElementsPage', () => {
     page.model.setHidePlain(true);
     await drain();
     expect(rowTexts(root)).toEqual(['<div>', 'AppShell<div>', 'StatCard<article>Notlar', 'Window<body>Notlar1 hosted', 'NoteEditor<section>', 'StatCard<article>page tree']);
+  });
+
+  it('lists the documents of the app and names a row\'s document from that list when no window root carries it', async () => {
+    const { page, root } = await render(FRAMED);
+    expect(rowTexts(root)).toEqual(['<div>', 'AppShell<div>', 'Preview<figure>Order preview', '<strong>', '<iframe>Order preview2 hosted', 'Preview<figure>page tree', '<strong>']);
+    expect(page.model.rows.map((row) => row.depth)).toEqual([0, 1, 2, 3, 2, 3, 4]);
+    expect(page.model.rows.map((row) => row.away)).toEqual([null, null, 'Order preview', null, null, null, null]);
+    expect(page.model.rows.map((row) => row.entry)).toEqual([false, false, true, false, false, true, false]);
+    expect(page.model.rows[4]).toMatchObject({ title: 'Order preview', hosted: 2, mirror: false });
+    expect(page.model.rows[5]).toMatchObject({ path: [0, 0, 0], key: '0.0.1>0.0.0', mirror: true });
+    page.model.setQuery('order');
+    await drain();
+    expect(rowTexts(root)).toEqual(['Preview<figure>Order preview', '<strong>', '<iframe>Order preview2 hosted']);
+    page.model.setQuery('strong');
+    await drain();
+    expect(rowTexts(root)).toEqual(['<strong>Order preview', '<strong>']);
+    const docs = root.querySelector('.dt-tree-docs') as HTMLElement;
+    expect([...docs.querySelectorAll('span')].map((span) => span.textContent)).toEqual(['DOCUMENTS', 'page · Notlar (window) · Order preview (iframe) · iframe']);
+  });
+
+  it('leaves the document list out while the app has only its page', async () => {
+    const { root } = await render();
+    expect(root.querySelector('.dt-tree-docs')).toBeNull();
   });
 
   it('finds the rows that live in a window by the window title', async () => {
@@ -342,10 +377,10 @@ describe('ElementsModel', () => {
     for (let i = 0; i < 4; i++) await tick();
     expect(reads).toBe(1);
     finishes.shift()!();
-    for (let i = 0; i < 4; i++) await tick();
+    for (let i = 0; i < 8; i++) await tick();
     expect(reads).toBe(2);
     finishes.shift()!();
-    for (let i = 0; i < 4; i++) await tick();
+    for (let i = 0; i < 8; i++) await tick();
     expect(reads).toBe(2);
     expect(model.state.total).toBe(1);
     model.dispose();
