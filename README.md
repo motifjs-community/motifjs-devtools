@@ -76,6 +76,11 @@ Light and dark themes follow the system, or are chosen in the header.
 `postMessage`, carrying JSON data only. The panel is a separate MotifJS app in its own iframe or window. It
 never touches the app's objects and never appears in the app's component tree.
 
+An open panel stays out of the app's way. The bridge only queues the app's events while the page builds or leaves
+a page, and sends them after the next frame in messages of up to 500 events. The panel reads from the page only while
+it is shown and the screen that needs the data is open, at most every 250 ms. The Elements tree is read in slices of
+500 components and shown in a virtual list, so pages with tens of thousands of components stay responsive.
+
 There are two ways to open the panel: as a **MotifJS** tab in the browser's DevTools with the extension, or
 docked in the page with the npm package. Both show the same panel.
 
@@ -185,8 +190,8 @@ while developing, with Rollup when `storeNames` is on as above.
 | `mount(options?)` | Adds the button and the panel to the page and returns a `DevtoolsHandle`. A second call returns the same handle. |
 | `MountOptions` | All optional: `open` (open at once), `position` (`'bottom'`, `'right'` or `'window'`), `src` (address of a panel page you serve yourself), `html` (a panel page as a string). Without `src` or `html` the panel that comes with the package is used. |
 | `DevtoolsHandle` | `isOpen`, `position`, `open()`, `close()`, `toggle()`, `dock(position)`, `dispose()` |
-| `createBridge({ send })` | The page side: follows `__MOTIF_DEVTOOLS__`, answers requests, forwards events. `receive(message)` takes messages from the panel. |
-| `createClient(port)` | The panel side: `request(method, ...args)`, `onEvent`, `onStatus`, `onDock`, `setDock`. |
+| `createBridge({ send })` | The page side: follows `__MOTIF_DEVTOOLS__`, answers requests, forwards events in batches after the next frame. `receive(message)` takes messages from the panel. `scheduler` replaces its frame, task and timer functions, for tests. |
+| `createClient(port)` | The panel side: `request(method, ...args)`, `stream(method, onChunk, ...args)` for answers sent in slices, `onEvent`, `onStatus`, `onDock`, `setDock`, and `shown` / `onShown` for the host showing or hiding the panel. |
 | `toTransfer(value, depth?)` | Turns any value into JSON data; values JSON cannot carry are marked with `$motif`. |
 
 ## Examples

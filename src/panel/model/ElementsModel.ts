@@ -1,7 +1,10 @@
 import { reactive } from '@motifx/core';
-import type { Client } from '../../client/client';
+import { TREE_FLAGS, type TreeRecord } from '../../bridge/protocol';
+import { taskRunner, type Cancel } from '../../bridge/schedule';
+import type { Client, Stream } from '../../client/client';
 import { pathKey } from '../format';
 import { valueId, type ValueEntry, type ValueNode, type ValueSource } from '../ValueTree';
+import { READ_GAP, Reader } from './reader';
 
 export type TreeNode = {
   path: number[];
@@ -51,13 +54,49 @@ const valueKey = (origin: ValueOrigin, keys: readonly string[]) => origin + '' 
 const PLAIN_TYPES = new Set(['Component', 'FragmentNode']);
 const AUTO_EXPAND_ROWS = 400;
 const TREE_EVENTS = new Set(['tree:changed', 'component:built', 'component:visibility', 'component:wait', 'component:disposed']);
-const REFRESH_DELAY = 120;
+export const ROWS_SLICE = 2000;
 
 export const isNamed = (type: string) => !PLAIN_TYPES.has(type);
 
+let runTask: ((run: () => void) => Cancel) | null = null;
+const nextTask = () => new Promise<void>((resolve) => void (runTask ??= taskRunner())(resolve));
+
+export function treeBuilder() {
+  let root: TreeNode | null = null;
+  const open: TreeNode[] = [];
+  return {
+    get root() {
+      return root;
+    },
+    add(records: readonly TreeRecord[]) {
+      for (const [depth, index, type, tag, flags, childCount] of records) {
+        const parent = depth === 0 ? null : open[depth - 1];
+        if (depth > 0 && parent === undefined) continue;
+        const node: TreeNode = {
+          path: parent === null ? [] : [...parent.path, index],
+          type,
+          tag,
+          built: (flags & TREE_FLAGS.built) !== 0,
+          visible: (flags & TREE_FLAGS.visible) !== 0,
+          waiting: (flags & TREE_FLAGS.waiting) !== 0,
+          disposed: (flags & TREE_FLAGS.disposed) !== 0,
+          connected: (flags & TREE_FLAGS.connected) !== 0,
+          childCount,
+          children: [],
+        };
+        if (parent === null) root = node;
+        else parent.children!.push(node);
+        open.length = depth;
+        open[depth] = node;
+      }
+    },
+  };
+}
+
 export class ElementsModel {
   readonly state = reactive({
-    rows: [] as Row[],
+    rowCount: 0,
+    rowsVersion: 0,
     total: 0,
     connected: 0,
     detached: 0,
@@ -71,43 +110,69 @@ export class ElementsModel {
     values: {} as Record<string, ValueNode>,
   });
 
+  rows: Row[] = [];
+
   private tree: TreeNode | null = null;
   private readonly expanded = new Set<string>();
   private readonly collapsed = new Set<string>();
-  private readonly rowCache = new Map<string, Row>();
-  private treeTimer: ReturnType<typeof setTimeout> | null = null;
-  private inspectTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly offs: (() => void)[] = [];
+  private readonly treeReader: Reader;
+  private readonly inspectReader: Reader;
+  private stream: Stream<unknown> | null = null;
   private hovered: string | null = null;
-  private treeTicket = 0;
+  private rowsTicket = 0;
 
-  constructor(private readonly client: Client) {
+  constructor(
+    private readonly client: Client,
+    private readonly active: () => boolean = () => true,
+    gap = READ_GAP,
+  ) {
+    this.treeReader = new Reader(() => this.readTree(), active, gap);
+    this.inspectReader = new Reader(() => this.inspectSelected(), () => active() && this.state.selected !== null, gap);
     this.offs.push(
       client.onEvent((event) => {
         if (event.type === 'devtools:picked') void this.reveal((event.payload as { path: number[] }).path);
-        else if (TREE_EVENTS.has(event.type)) this.scheduleTree();
-        else if (event.type === 'reactivity:flush') this.scheduleInspect();
+        else if (TREE_EVENTS.has(event.type)) void this.treeReader.request();
+        else if (event.type === 'reactivity:flush') void this.inspectReader.request();
       }),
       client.onStatus((status) => {
-        if (status.connected) void this.loadTree();
+        if (status.connected) void this.treeReader.request(true);
       }),
     );
-    void this.loadTree();
+    void this.treeReader.request(true);
   }
 
-  async loadTree() {
-    const ticket = ++this.treeTicket;
+  loadTree() {
+    return this.treeReader.request(true);
+  }
+
+  wake() {
+    this.treeReader.wake();
+    this.inspectReader.wake();
+  }
+
+  pause() {
+    this.stream?.cancel();
+  }
+
+  private async readTree() {
+    const builder = treeBuilder();
+    const stream = this.client.stream<TreeRecord[]>('readTree', (records) => builder.add(records));
+    this.stream = stream;
     try {
-      const tree = await this.client.request<TreeNode | null>('getTree');
-      if (ticket !== this.treeTicket) return;
-      this.tree = tree;
-      this.state.error = null;
+      await stream.done;
     } catch (error) {
-      if (ticket === this.treeTicket) this.state.error = error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : String(error);
+      if (message === 'cancelled') void this.treeReader.request();
+      else this.state.error = message;
       return;
+    } finally {
+      if (this.stream === stream) this.stream = null;
     }
-    this.rebuildRows();
-    if (this.state.selected !== null) void this.inspectSelected();
+    this.tree = builder.root;
+    this.state.error = null;
+    await this.rebuildRows();
+    if (this.state.selected !== null) void this.inspectReader.request(true);
   }
 
   toggle(row: Row) {
@@ -119,17 +184,17 @@ export class ElementsModel {
       this.collapsed.delete(row.key);
       this.expanded.add(row.key);
     }
-    this.rebuildRows();
+    void this.rebuildRows();
   }
 
   setHidePlain(value: boolean) {
     this.state.hidePlain = value;
-    this.rebuildRows();
+    void this.rebuildRows();
   }
 
   setQuery(value: string) {
     this.state.query = value;
-    this.rebuildRows();
+    void this.rebuildRows();
   }
 
   readonly propsSource: ValueSource = {
@@ -171,7 +236,7 @@ export class ElementsModel {
     if (this.state.selected !== row.key) this.state.values = {};
     this.state.selected = row.key;
     this.state.tab = 'details';
-    void this.inspectSelected();
+    void this.inspectReader.request(true);
   }
 
   hover(row: Row | null) {
@@ -189,11 +254,11 @@ export class ElementsModel {
       this.expanded.add(key);
     }
     if (this.state.query !== '') this.state.query = '';
-    this.rebuildRows();
+    await this.rebuildRows();
     let target: Row | undefined;
     for (let n = path.length; n >= 0 && target === undefined; n--) {
       const key = pathKey(path.slice(0, n));
-      target = this.state.rows.find((row) => row.key === key);
+      target = this.rows.find((row) => row.key === key);
     }
     if (target === undefined) return;
     this.select(target);
@@ -217,8 +282,10 @@ export class ElementsModel {
   }
 
   dispose() {
-    if (this.treeTimer !== null) clearTimeout(this.treeTimer);
-    if (this.inspectTimer !== null) clearTimeout(this.inspectTimer);
+    this.treeReader.dispose();
+    this.inspectReader.dispose();
+    this.stream?.cancel();
+    this.rowsTicket++;
     for (const off of this.offs) off();
   }
 
@@ -253,104 +320,75 @@ export class ElementsModel {
     for (const [origin, keys] of open) await this.loadValue(origin as ValueOrigin, keys.split(''));
   }
 
-  private scheduleTree() {
-    if (this.treeTimer !== null) return;
-    this.treeTimer = setTimeout(() => {
-      this.treeTimer = null;
-      void this.loadTree();
-    }, REFRESH_DELAY);
-  }
-
-  private scheduleInspect() {
-    if (this.state.selected === null || this.inspectTimer !== null) return;
-    this.inspectTimer = setTimeout(() => {
-      this.inspectTimer = null;
-      void this.inspectSelected();
-    }, REFRESH_DELAY * 2);
-  }
-
   private isExpanded(key: string, budget: { rows: number }) {
     if (this.expanded.has(key)) return true;
     if (this.collapsed.has(key)) return false;
     return budget.rows < AUTO_EXPAND_ROWS;
   }
 
-  private rebuildRows() {
+  private async rebuildRows(): Promise<void> {
+    const ticket = ++this.rowsTicket;
+    const tree = this.tree;
     const next: Row[] = [];
-    const seen = new Set<string>();
     let total = 0;
     let connected = 0;
+    let work = 0;
     const query = this.state.query.trim().toLowerCase();
+    const hidePlain = this.state.hidePlain;
     const budget = { rows: 0 };
     const matches = (node: TreeNode) => query === '' || node.type.toLowerCase().includes(query) || node.tag.toLowerCase().includes(query);
+    const shown = (node: TreeNode) => (!hidePlain || isNamed(node.type) || node.path.length === 0) && matches(node);
+    const showsAny = new Map<TreeNode, boolean>();
+    const current = () => ticket === this.rowsTicket && tree === this.tree;
 
-    const count = (node: TreeNode) => {
-      total++;
-      if (node.connected) connected++;
-      for (const child of node.children ?? []) count(child);
-    };
-
-    const shown = (node: TreeNode) => (!this.state.hidePlain || isNamed(node.type) || node.path.length === 0) && matches(node);
-    const memo = new Map<TreeNode, boolean>();
-    const showsAny = (node: TreeNode): boolean => {
-      let result = memo.get(node);
-      if (result === undefined) {
-        result = (node.children ?? []).some((child) => shown(child) || showsAny(child));
-        memo.set(node, result);
+    if (tree !== null) {
+      const stack: [TreeNode, number][] = [[tree, 0]];
+      while (stack.length > 0) {
+        const top = stack[stack.length - 1];
+        const children = top[0].children ?? [];
+        if (top[1] < children.length) {
+          stack.push([children[top[1]++], 0]);
+          continue;
+        }
+        stack.pop();
+        total++;
+        if (top[0].connected) connected++;
+        showsAny.set(top[0], children.some((child) => shown(child) || showsAny.get(child) === true));
+        if (++work % ROWS_SLICE === 0) {
+          await nextTask();
+          if (!current()) return;
+        }
       }
-      return result;
-    };
 
-    const visit = (node: TreeNode, depth: number) => {
-      const named = isNamed(node.type);
-      const show = shown(node);
-      const children = node.children ?? [];
-      const key = pathKey(node.path);
-      let expanded = true;
-      if (show) {
-        budget.rows++;
-        const hasChildren = showsAny(node);
-        expanded = hasChildren && (query !== '' || this.isExpanded(key, budget));
-        next.push(this.rowFor(key, node, depth, named, hasChildren, expanded));
-        seen.add(key);
+      const visits: [TreeNode, number][] = [[tree, 0]];
+      while (visits.length > 0) {
+        const [node, depth] = visits.pop()!;
+        const show = shown(node);
+        const children = node.children ?? [];
+        let expanded = true;
+        if (show) {
+          budget.rows++;
+          const key = pathKey(node.path);
+          const hasChildren = showsAny.get(node) === true;
+          expanded = hasChildren && (query !== '' || this.isExpanded(key, budget));
+          next.push({ key, path: node.path, depth, type: node.type, tag: node.tag, named: isNamed(node.type), visible: node.visible, waiting: node.waiting, connected: node.connected, hasChildren, expanded });
+        }
+        if (++work % ROWS_SLICE === 0) {
+          await nextTask();
+          if (!current()) return;
+        }
+        if (!expanded && show) continue;
+        const childDepth = show ? depth + 1 : depth;
+        for (let i = children.length - 1; i >= 0; i--) visits.push([children[i], childDepth]);
       }
-      if (!expanded && show) return;
-      const childDepth = show ? depth + 1 : depth;
-      for (const child of children) visit(child, childDepth);
-    };
-
-    if (this.tree !== null) {
-      count(this.tree);
-      visit(this.tree, 0);
     }
-    for (const key of this.rowCache.keys()) if (!seen.has(key)) this.rowCache.delete(key);
+
+    if (!current()) return;
+    this.rows = next;
     this.state.total = total;
     this.state.connected = connected;
     this.state.detached = total - connected;
-    this.state.rows.splice(0, this.state.rows.length, ...next);
-  }
-
-  private rowFor(key: string, node: TreeNode, depth: number, named: boolean, hasChildren: boolean, expanded: boolean): Row {
-    const existing = this.rowCache.get(key);
-    const values = {
-      key,
-      path: node.path,
-      depth,
-      type: node.type,
-      tag: node.tag,
-      named,
-      visible: node.visible,
-      waiting: node.waiting,
-      connected: node.connected,
-      hasChildren,
-      expanded,
-    };
-    if (existing !== undefined) {
-      Object.assign(existing, values);
-      return existing;
-    }
-    const row = reactive(values) as Row;
-    this.rowCache.set(key, row);
-    return row;
+    this.state.rowCount = next.length;
+    this.state.rowsVersion++;
   }
 }

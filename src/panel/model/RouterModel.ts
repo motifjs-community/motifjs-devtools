@@ -1,6 +1,7 @@
 import { reactive } from '@motifx/core';
 import type { Client } from '../../client/client';
 import { MARK } from '../../bridge/serialize';
+import { READ_GAP, Reader } from './reader';
 
 export const OUTCOMES = ['done', 'skipped', 'cancelled', 'notFound', 'error'] as const;
 export const HOOKS = ['validate', 'onEntering', 'onEnter', 'onLeave', 'onUpdate', 'onShow'] as const;
@@ -126,11 +127,17 @@ export class RouterModel {
 
   private loading = 0;
   private readonly offs: (() => void)[] = [];
+  private readonly reader: Reader;
 
-  constructor(private readonly client: Client) {
+  constructor(
+    private readonly client: Client,
+    active: () => boolean = () => true,
+    delay = READ_GAP,
+  ) {
+    this.reader = new Reader(() => this.load(), active, delay);
     this.offs.push(
       client.onStatus((status) => {
-        if (status.connected) void this.load();
+        if (status.connected) void this.reader.request(true);
         else this.state.navigating = null;
       }),
       client.onEvent((event) => {
@@ -139,7 +146,7 @@ export class RouterModel {
           this.state.navigating = typeof uri === 'string' ? uri : '';
         } else if (event.type === 'route:navigation-end') {
           this.state.navigating = null;
-          void this.load();
+          void this.reader.request();
         }
       }),
     );
@@ -196,7 +203,12 @@ export class RouterModel {
     return row !== undefined && row.depth === chain.length - 1 && this.isActive(row);
   }
 
+  wake() {
+    this.reader.wake();
+  }
+
   dispose() {
+    this.reader.dispose();
     for (const off of this.offs) off();
   }
 }

@@ -4,7 +4,7 @@ import type { Client, ClientEvent, ClientStatus } from '../src/client/client';
 import { DevtoolsModel } from '../src/panel/model/DevtoolsModel';
 import { RouterModel, matchesRoute, routeRows } from '../src/panel/model/RouterModel';
 import { RouterPage } from '../src/panel/pages/RouterPage';
-import { tick } from './helpers';
+import { idleClient, tick } from './helpers';
 
 const settle = async () => {
   for (let i = 0; i < 6; i++) await tick();
@@ -40,6 +40,7 @@ function fakeClient(page: Page) {
       return () => statuses.delete(listener);
     },
     onDock: () => () => {},
+    ...idleClient,
     setDock() {},
     dispose() {},
   };

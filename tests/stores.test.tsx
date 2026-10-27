@@ -4,7 +4,7 @@ import type { Client, ClientEvent, ClientStatus } from '../src/client/client';
 import { DevtoolsModel } from '../src/panel/model/DevtoolsModel';
 import { StoresModel, displayName } from '../src/panel/model/StoresModel';
 import { StoresPage } from '../src/panel/pages/StoresPage';
-import { tick } from './helpers';
+import { idleClient, tick } from './helpers';
 import { formatClock } from '../src/panel/format';
 
 const settle = async () => {
@@ -49,6 +49,7 @@ function fakeClient(stores = STORES()) {
       return () => statuses.delete(listener);
     },
     onDock: () => () => {},
+    ...idleClient,
     setDock() {},
     dispose() {},
   };

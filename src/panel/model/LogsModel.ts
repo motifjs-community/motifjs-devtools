@@ -1,5 +1,6 @@
 import { reactive } from '@motifx/core';
 import type { Client } from '../../client/client';
+import { READ_GAP, Reader } from './reader';
 
 export type Level = 'warning' | 'error';
 export type LevelFilter = Level | 'all';
@@ -29,16 +30,18 @@ export class LogsModel {
   });
 
   private loading = 0;
-  private timer: ReturnType<typeof setTimeout> | null = null;
+  private readonly reader: Reader;
   private readonly offs: (() => void)[] = [];
 
   constructor(
     private readonly client: Client,
-    private readonly delay = 200,
+    private readonly delay = READ_GAP,
+    private readonly active: () => boolean = () => true,
   ) {
+    this.reader = new Reader(() => this.load(), this.active, this.delay);
     this.offs.push(
       client.onStatus((status) => {
-        if (status.connected) void this.load();
+        if (status.connected) void this.reader.request(true);
       }),
       client.onEvent((event) => {
         if (event.type === 'warning' || event.type === 'error:caught') this.schedule();
@@ -99,16 +102,16 @@ export class LogsModel {
     this.state.expanded = this.state.expanded === key ? null : key;
   }
 
+  wake() {
+    this.reader.wake();
+  }
+
   dispose() {
-    if (this.timer !== null) clearTimeout(this.timer);
+    this.reader.dispose();
     for (const off of this.offs) off();
   }
 
   private schedule() {
-    if (this.timer !== null) return;
-    this.timer = setTimeout(() => {
-      this.timer = null;
-      void this.load();
-    }, this.delay);
+    void this.reader.request();
   }
 }

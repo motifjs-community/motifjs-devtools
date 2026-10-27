@@ -23,11 +23,23 @@ export type DockPosition = 'bottom' | 'right' | 'window';
 
 export type BridgeDock = { channel: typeof CHANNEL; kind: 'dock'; position: DockPosition };
 
-export type BridgeEvent = { channel: typeof CHANNEL; kind: 'event'; event: { type: string; payload?: unknown; time?: number } };
+export type BridgeEventData = { type: string; payload?: unknown; time?: number };
+
+export type BridgeEvents = { channel: typeof CHANNEL; kind: 'events'; events: BridgeEventData[] };
+
+export type BridgeChunk = { channel: typeof CHANNEL; kind: 'chunk'; id: number; value: unknown };
+
+export type BridgeCancel = { channel: typeof CHANNEL; kind: 'cancel'; id: number };
+
+export type BridgeVisibility = { channel: typeof CHANNEL; kind: 'visibility'; shown: boolean };
 
 export type PageMemory = { used: number; total: number; limit: number };
 
-export type BridgeMessage = BridgeHello | BridgeDock | BridgeRequest | BridgeResponse | BridgeStatus | BridgeEvent;
+export type TreeRecord = [depth: number, index: number, type: string, tag: string, flags: number, childCount: number];
+
+export const TREE_FLAGS = { built: 1, visible: 2, waiting: 4, disposed: 8, connected: 16 } as const;
+
+export type BridgeMessage = BridgeHello | BridgeDock | BridgeRequest | BridgeResponse | BridgeStatus | BridgeEvents | BridgeChunk | BridgeCancel | BridgeVisibility;
 
 export const READ_METHODS = [
   'isEnabled',
@@ -59,7 +71,7 @@ export const WRITE_METHODS = [
   'setStoreValue',
 ] as const;
 
-export const PAGE_METHODS = ['highlight', 'pick', 'getMemory'] as const;
+export const PAGE_METHODS = ['highlight', 'pick', 'getMemory', 'readTree'] as const;
 
 export type BridgeMethod = (typeof READ_METHODS)[number] | (typeof WRITE_METHODS)[number] | (typeof PAGE_METHODS)[number];
 

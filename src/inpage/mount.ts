@@ -88,7 +88,14 @@ export function mount(options: MountOptions = {}): DevtoolsHandle {
 
   const clamp = (value: number, max: number) => Math.max(MIN_SIZE, Math.min(max, value));
 
+  let shownSent: boolean | null = null;
+  const sendShown = () => {
+    shownSent = isOpen;
+    post({ channel: CHANNEL, kind: 'visibility', shown: isOpen });
+  };
+
   const layout = () => {
+    if (shownSent !== null && shownSent !== isOpen) sendShown();
     const visible = isOpen && state.position !== 'window';
     dockElement.hidden = !visible;
     dockElement.dataset.position = docked;
@@ -103,7 +110,10 @@ export function mount(options: MountOptions = {}): DevtoolsHandle {
     host.style.setProperty('--dock-width', `${width}px`);
   };
 
-  const announce = () => post({ channel: CHANNEL, kind: 'dock', position: state.position });
+  const announce = () => {
+    post({ channel: CHANNEL, kind: 'dock', position: state.position });
+    sendShown();
+  };
 
   let panelHtml: Promise<string> | null = null;
   const loadHtml = () =>

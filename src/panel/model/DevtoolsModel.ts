@@ -1,6 +1,7 @@
 import { reactive } from '@motifx/core';
 import type { DockPosition } from '../../bridge/protocol';
 import type { Client, ClientStatus } from '../../client/client';
+import { Reader } from './reader';
 
 export type Section = 'home' | 'elements' | 'reactivity' | 'performance' | 'router' | 'stores' | 'services' | 'logs';
 export type ThemeChoice = 'system' | 'light' | 'dark';
@@ -14,7 +15,12 @@ export type Counters = {
 };
 
 const THEME_KEY = 'motif-devtools:theme';
-const REFRESH_DELAY = 200;
+
+export type ShownSource = (listener: (shown: boolean) => void) => () => void;
+
+export type DevtoolsOptions = { shown?: ShownSource; gap?: number };
+
+const documentVisible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
 
 export class DevtoolsModel {
   readonly state = reactive({
@@ -25,28 +31,53 @@ export class DevtoolsModel {
     issues: 0,
     dock: null as DockPosition | null,
     picking: false,
+    shown: true,
   });
 
-  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly reader: Reader;
+  private hostShown: boolean;
+  private panelShown = true;
   private pendingReveal: number[] | null = null;
   private revealListener: ((path: number[]) => void) | null = null;
   private readonly offs: (() => void)[] = [];
 
-  constructor(readonly client: Client) {
+  constructor(
+    readonly client: Client,
+    options: DevtoolsOptions = {},
+  ) {
+    this.hostShown = client.shown;
+    this.state.shown = this.hostShown && documentVisible();
+    this.reader = new Reader(() => this.refresh(), () => this.state.shown && this.state.status.connected, options.gap);
     this.offs.push(
       client.onStatus((status) => {
         this.state.status = status;
-        if (status.connected) void this.refresh();
+        if (status.connected) void this.reader.request(true);
         else this.state.counters = null;
       }),
       client.onEvent((event) => {
         if (event.type === 'devtools:pick') this.state.picking = (event.payload as { active?: boolean } | undefined)?.active === true;
-        else if (event.type !== 'devtools:picked') this.scheduleRefresh();
+        else if (event.type !== 'devtools:picked') void this.reader.request();
       }),
       client.onDock((position) => {
         this.state.dock = position;
       }),
+      client.onShown((shown) => {
+        this.hostShown = shown;
+        this.updateShown();
+      }),
     );
+    if (options.shown !== undefined)
+      this.offs.push(
+        options.shown((shown) => {
+          this.panelShown = shown;
+          this.updateShown();
+        }),
+      );
+    if (typeof document !== 'undefined') {
+      const onVisibility = () => this.updateShown();
+      document.addEventListener('visibilitychange', onVisibility);
+      this.offs.push(() => document.removeEventListener('visibilitychange', onVisibility));
+    }
   }
 
   select(section: Section) {
@@ -107,16 +138,15 @@ export class DevtoolsModel {
   }
 
   dispose() {
-    if (this.refreshTimer !== null) clearTimeout(this.refreshTimer);
+    this.reader.dispose();
     for (const off of this.offs) off();
   }
 
-  private scheduleRefresh() {
-    if (this.refreshTimer !== null) return;
-    this.refreshTimer = setTimeout(() => {
-      this.refreshTimer = null;
-      void this.refresh();
-    }, REFRESH_DELAY);
+  private updateShown() {
+    const shown = this.hostShown && this.panelShown && documentVisible();
+    if (shown === this.state.shown) return;
+    this.state.shown = shown;
+    if (shown) this.reader.wake();
   }
 }
 

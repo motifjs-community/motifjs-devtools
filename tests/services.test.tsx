@@ -4,7 +4,7 @@ import type { Client, ClientEvent, ClientStatus } from '../src/client/client';
 import { ServicesModel, scopeRows, type ScopeInfo } from '../src/panel/model/ServicesModel';
 import { ServicesPage } from '../src/panel/pages/ServicesPage';
 import { formatClock } from '../src/panel/format';
-import { tick } from './helpers';
+import { idleClient, tick } from './helpers';
 
 const settle = async () => {
   for (let i = 0; i < 8; i++) await tick();
@@ -57,6 +57,7 @@ function fakeClient(scopes = SCOPES(), registrations = REGISTRATIONS()) {
       return () => statuses.delete(listener);
     },
     onDock: () => () => {},
+    ...idleClient,
     setDock() {},
     dispose() {},
   };

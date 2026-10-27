@@ -3,7 +3,7 @@ import { Application, Component, createSignal, reactive } from '@motifx/core';
 import { nameModuleStore } from '@motifx/core/devtools';
 import { createBridge, type Bridge } from '../src/bridge/bridge';
 import { CHANNEL, type BridgeMessage, type BridgeResponse } from '../src/bridge/protocol';
-import { tick } from './helpers';
+import { drain, eventsIn, microScheduler, tick } from './helpers';
 
 class Counter extends Component<HTMLDivElement> {
   state = reactive({ count: 0 });
@@ -26,7 +26,7 @@ let messages: BridgeMessage[] = [];
 let nextId = 1;
 
 const start = () => {
-  bridge = createBridge({ send: (message) => messages.push(message), interval: 10 });
+  bridge = createBridge({ send: (message) => messages.push(message), interval: 10, scheduler: microScheduler });
   return bridge;
 };
 
@@ -215,11 +215,22 @@ describe('bridge', () => {
     const root = runApp();
     start();
     root.state.count++;
-    await tick();
-    await tick();
-    const flush = messages.find((m) => m.kind === 'event' && m.event.type === 'reactivity:flush');
+    await drain();
+    const flush = eventsIn(messages).find((e) => e.type === 'reactivity:flush');
     expect(flush).toBeDefined();
     expect(JSON.parse(JSON.stringify(flush))).toEqual(flush);
+  });
+
+  it('holds events until after the next frame with the default scheduler', async () => {
+    const root = runApp();
+    bridge = createBridge({ send: (message) => messages.push(message), interval: 10 });
+    root.state.count++;
+    await tick();
+    await tick();
+    expect(eventsIn(messages)).toEqual([]);
+    expect(messages.filter((m) => m.kind === 'status')).toHaveLength(1);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(eventsIn(messages).some((e) => e.type === 'reactivity:flush')).toBe(true);
   });
 
   it('stamps every event with the page time', async () => {
@@ -230,12 +241,12 @@ describe('bridge', () => {
     await tick();
     await tick();
     const after = performance.timeOrigin + performance.now();
-    const events = messages.filter((m) => m.kind === 'event');
+    await drain();
+    const events = eventsIn(messages);
     expect(events.length).toBeGreaterThan(0);
-    for (const message of events) {
-      const time = message.kind === 'event' ? message.event.time! : 0;
-      expect(time).toBeGreaterThanOrEqual(before);
-      expect(time).toBeLessThanOrEqual(after);
+    for (const event of events) {
+      expect(event.time).toBeGreaterThanOrEqual(before);
+      expect(event.time).toBeLessThanOrEqual(after);
     }
   });
 

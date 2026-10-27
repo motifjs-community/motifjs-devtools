@@ -2,6 +2,7 @@ export const DETECT_SOURCE = 'motif-devtools:detect';
 export const PAGE_SOURCE = 'motif-devtools:page';
 export const CONTENT_SOURCE = 'motif-devtools:content';
 export const BRIDGE_KEY = '__MOTIF_DEVTOOLS_BRIDGE__';
+export const PANEL_SHOWN_KEY = '__MOTIF_DEVTOOLS_SHOWN__';
 export const PANEL_PREFIX = 'panel:';
 export const CONTENT_PORT = 'content';
 

@@ -4,7 +4,7 @@ import type { Client, ClientEvent, ClientStatus } from '../src/client/client';
 import { DevtoolsModel } from '../src/panel/model/DevtoolsModel';
 import { LogsModel } from '../src/panel/model/LogsModel';
 import { LogsPage } from '../src/panel/pages/LogsPage';
-import { tick } from './helpers';
+import { idleClient, tick } from './helpers';
 
 const settle = async () => {
   for (let i = 0; i < 6; i++) await tick();
@@ -35,6 +35,7 @@ function fakeClient(page: Page) {
       return () => statuses.delete(listener);
     },
     onDock: () => () => {},
+    ...idleClient,
     setDock() {},
     dispose() {},
   };

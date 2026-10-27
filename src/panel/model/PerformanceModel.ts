@@ -90,6 +90,7 @@ export class PerformanceModel {
     private readonly counters: () => Counters | null,
     private readonly time: () => number = Date.now,
     interval = SAMPLE_INTERVAL,
+    private readonly shown: () => boolean = () => true,
   ) {
     this.state.now = time();
     this.off = client.onEvent((event) => this.receive(event));
@@ -216,7 +217,7 @@ export class PerformanceModel {
   }
 
   async sample() {
-    if (this.state.paused || !this.client.status.connected) return;
+    if (this.state.paused || !this.client.status.connected || !this.shown()) return;
     let memory: PageMemory | null = null;
     try {
       memory = await this.client.request<PageMemory | null>('getMemory');

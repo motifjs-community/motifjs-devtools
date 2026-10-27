@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Application } from '@motifx/core';
-import type { Client, ClientEvent, ClientStatus } from '../src/client/client';
+import type { Client, ClientEvent, ClientStatus, Stream } from '../src/client/client';
+import { TREE_FLAGS, type TreeRecord } from '../src/bridge/protocol';
 import { DevtoolsModel } from '../src/panel/model/DevtoolsModel';
 import { ElementsPage } from '../src/panel/pages/ElementsPage';
 import { toTransfer } from '../src/bridge/serialize';
-import { tick } from './helpers';
+import { drain, tick } from './helpers';
 
 const node = (path: number[], type: string, tag: string, children: unknown[] = [], extra = {}) => ({
   path, type, tag, built: true, visible: true, waiting: false, disposed: false, connected: true, childCount: children.length, children, ...extra,
@@ -16,6 +17,19 @@ const TREE = node([], 'Component', 'div', [
     node([0, 1], 'StatCard', 'article', [node([0, 1, 0], 'Component', '#text')]),
   ]),
 ]);
+
+type TestNode = ReturnType<typeof node>;
+
+const recordsOf = (tree: TestNode): TreeRecord[] => {
+  const out: TreeRecord[] = [];
+  const walk = (n: TestNode) => {
+    const flags = (n.built ? TREE_FLAGS.built : 0) | (n.visible ? TREE_FLAGS.visible : 0) | (n.waiting ? TREE_FLAGS.waiting : 0) | (n.disposed ? TREE_FLAGS.disposed : 0) | (n.connected ? TREE_FLAGS.connected : 0);
+    out.push([n.path.length, n.path.at(-1) ?? 0, n.type, n.tag, flags, n.children.length]);
+    for (const child of n.children as TestNode[]) walk(child);
+  };
+  walk(tree);
+  return out;
+};
 
 const INSPECTION = {
   ...node([0, 1], 'StatCard', 'article'),
@@ -32,14 +46,13 @@ const INSPECTION = {
   extensions: {},
 };
 
-function fakeClient() {
+function fakeClient(tree: TestNode = TREE) {
   const calls: { method: string; args: unknown[] }[] = [];
   const client: Client = {
     status: { connected: true, version: 1 } as ClientStatus,
     dock: null,
     async request<T>(method: string, ...args: unknown[]) {
       calls.push({ method, args });
-      if (method === 'getTree') return TREE as T;
       if (method === 'inspect') return toTransfer({ ...INSPECTION, bindings: [...INSPECTION.bindings, { kind: 'list', property: undefined, member: undefined, active: null }] }, 6) as T;
       if (method === 'getCounters') return { components: { live: 0, inTree: 0, notInTree: 0, byType: {} }, bindings: 0, listeners: { dom: 0, component: 0 }, effects: { live: 0, owned: 0 }, reactivity: { runs: 0, flushes: 0, flushRuns: 0, lastFlushDuration: 0, maxFlushDuration: 0 } } as T;
       if (method === 'setClass' || method === 'setVisible') return { ok: true } as T;
@@ -47,14 +60,25 @@ function fakeClient() {
       if (method === 'readValue') return { ok: true, value: { entries: [{ key: 'id', value: 7 }, { key: 'meta', value: { kind: 'object', type: 'Object', keys: 1 } }], total: 5 } } as T;
       return [] as T;
     },
+    shown: true,
+    stream<C, T>(method: string, onChunk: (chunk: C) => void): Stream<T> {
+      calls.push({ method, args: [] });
+      if (method !== 'readTree') return { done: new Promise<T>(() => {}), cancel() {} };
+      const records = recordsOf(tree);
+      onChunk(records as C);
+      return { done: Promise.resolve({ count: records.length } as T), cancel() {} };
+    },
     onEvent: (_listener: (event: ClientEvent) => void) => () => {},
     onStatus: () => () => {},
     onDock: () => () => {},
+    onShown: () => () => {},
     setDock() {},
     dispose() {},
   };
   return { client, calls };
 }
+
+const clientHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientHeight');
 
 let app: Application | null = null;
 
@@ -62,17 +86,21 @@ afterEach(async () => {
   await app?.dispose?.();
   app = null;
   document.body.innerHTML = '';
+  if (clientHeight !== undefined) Object.defineProperty(HTMLElement.prototype, 'clientHeight', clientHeight);
 });
 
-async function render() {
-  const { client, calls } = fakeClient();
+async function render(tree?: TestNode) {
+  const { client, calls } = fakeClient(tree);
+  Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, get: () => 600 });
   document.body.innerHTML = '<div id="app"></div>';
   const builder = Application.CreateBuilder();
-  builder.services.addSingleton(DevtoolsModel, { useValue: new DevtoolsModel(client) });
+  const devtools = new DevtoolsModel(client);
+  devtools.select('elements');
+  builder.services.addSingleton(DevtoolsModel, { useValue: devtools });
   app = builder.build();
   const page = new ElementsPage();
   app.run('#app', page);
-  for (let i = 0; i < 4; i++) await tick();
+  for (let i = 0; i < 8; i++) await tick();
   return { page, calls, root: document.querySelector('.dt-elements') as HTMLElement };
 }
 
@@ -88,29 +116,29 @@ describe('ElementsPage', () => {
   it('hides plain elements on request and keeps named descendants', async () => {
     const { page, root } = await render();
     page.model.setHidePlain(true);
-    await tick();
+    await drain();
     expect(rowTexts(root)).toEqual(['<div>', 'AppShell<div>', 'UserMenu<button>WAITING', 'StatCard<article>']);
-    expect(page.model.state.rows.find((row) => row.type === 'StatCard')?.hasChildren).toBe(false);
+    expect(page.model.rows.find((row) => row.type === 'StatCard')?.hasChildren).toBe(false);
   });
 
   it('filters by name or tag', async () => {
     const { page, root } = await render();
     page.model.setQuery('stat');
-    await tick();
+    await drain();
     expect(rowTexts(root)).toEqual(['StatCard<article>']);
   });
 
   it('collapses a row', async () => {
     const { page, root } = await render();
-    page.model.toggle(page.model.state.rows[1]);
-    await tick();
+    page.model.toggle(page.model.rows[1]);
+    await drain();
     expect(rowTexts(root)).toEqual(['<div>', 'AppShell<div>']);
   });
 
   it('inspects the selected component', async () => {
     const errors = vi.spyOn(console, 'error');
     const { page, root, calls } = await render();
-    page.model.select(page.model.state.rows[4]);
+    page.model.select(page.model.rows[4]);
     for (let i = 0; i < 4; i++) await tick();
     expect(calls.some((c) => c.method === 'inspect' && JSON.stringify(c.args) === '[[0,1]]')).toBe(true);
     const inspector = root.querySelector('.dt-inspector') as HTMLElement;
@@ -126,7 +154,7 @@ describe('ElementsPage', () => {
 
   it('sends a plain path that postMessage can copy when a row is hovered', async () => {
     const { page, calls } = await render();
-    page.model.hover(page.model.state.rows[4]);
+    page.model.hover(page.model.rows[4]);
     page.model.hover(null);
     const highlights = calls.filter((c) => c.method === 'highlight');
     expect(highlights.map((c) => c.args)).toEqual([[[0, 1]], [null]]);
@@ -135,7 +163,7 @@ describe('ElementsPage', () => {
 
   it('expands a prop value one level through readValue and collapses it', async () => {
     const { page, root, calls } = await render();
-    page.model.select(page.model.state.rows[4]);
+    page.model.select(page.model.rows[4]);
     for (let i = 0; i < 4; i++) await tick();
     const statRow = [...root.querySelectorAll('.dt-prop-row')].find((row) => row.textContent?.includes('stat')) as HTMLElement;
     (statRow.querySelector('.dt-caret') as HTMLButtonElement).click();
@@ -151,7 +179,7 @@ describe('ElementsPage', () => {
 
   it('lists the fields of a component and opens them through readValue with the fields source', async () => {
     const { page, root, calls } = await render();
-    page.model.select(page.model.state.rows[4]);
+    page.model.select(page.model.rows[4]);
     for (let i = 0; i < 4; i++) await tick();
     const fields = root.querySelector('.dt-fields') as HTMLElement;
     expect(fields.textContent).toContain('title');
@@ -167,7 +195,7 @@ describe('ElementsPage', () => {
   it('shows the error when a value cannot be read', async () => {
     const errors = vi.spyOn(console, 'error');
     const { page, root } = await render();
-    page.model.select(page.model.state.rows[4]);
+    page.model.select(page.model.rows[4]);
     for (let i = 0; i < 4; i++) await tick();
     await page.model.toggleValue(['broken']);
     await tick();
@@ -178,44 +206,91 @@ describe('ElementsPage', () => {
 
   it('removes a class through the contract', async () => {
     const { page, calls } = await render();
-    page.model.select(page.model.state.rows[4]);
+    page.model.select(page.model.rows[4]);
     await tick();
     await page.model.setClass('positive', false);
     expect(calls.find((c) => c.method === 'setClass')?.args).toEqual([[0, 1], 'positive', false]);
   });
 });
 
+describe('ElementsPage with a large tree', () => {
+  const ROWS = 12_000;
+  const large = () => node([], 'Component', 'div', [node([0], 'List', '#fragment', Array.from({ length: ROWS }, (_, i) => node([0, i], 'Row', 'li')))]);
+
+  const settle = async () => {
+    for (let i = 0; i < 40; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+  };
+
+  it('computes every row but renders only the rows around the viewport', async () => {
+    const { page, root } = await render(large());
+    await settle();
+    expect(page.model.state.total).toBe(ROWS + 2);
+    expect(page.model.state.rowCount).toBe(ROWS + 2);
+    expect(page.model.rows).toHaveLength(ROWS + 2);
+    const rendered = root.querySelectorAll('.dt-row').length;
+    expect(rendered).toBeGreaterThan(0);
+    expect(rendered).toBeLessThanOrEqual(Math.ceil((600 / 28) * 3));
+    expect(root.querySelector('.dt-tree-head')?.textContent).toContain(`${ROWS + 2} / ${ROWS + 2} NODES`);
+  });
+
+  it('keeps the result of the newest request when the rows are asked for again while computing', async () => {
+    const { page } = await render(large());
+    await settle();
+    page.model.setQuery('row');
+    page.model.setQuery('list');
+    await settle();
+    expect(page.model.rows.map((row) => row.type)).toEqual(['List']);
+    expect(page.model.state.rowCount).toBe(1);
+  });
+});
+
 describe('ElementsModel', () => {
-  it('keeps the newest tree when an older request fails later', async () => {
+  it('runs one tree read at a time and reads once more after changes during a read', async () => {
     const { ElementsModel } = await import('../src/panel/model/ElementsModel');
-    const statusListeners = new Set<(status: ClientStatus) => void>();
-    let failFirst: (error: Error) => void = () => {};
-    let calls = 0;
+    const eventListeners = new Set<(event: ClientEvent) => void>();
+    const finishes: (() => void)[] = [];
+    let reads = 0;
     const client: Client = {
       status: { connected: true, version: 1 },
       dock: null,
-      request<T>(method: string) {
-        if (method !== 'getTree') return Promise.resolve(null as T);
-        calls++;
-        if (calls === 1) return new Promise<T>((_, reject) => (failFirst = reject));
-        return Promise.resolve({ path: [], type: 'App', tag: 'div', built: true, visible: true, waiting: false, disposed: false, connected: true, childCount: 0, children: [] } as T);
+      shown: true,
+      request: <T,>() => Promise.resolve(null as T),
+      stream<C, T>(method: string, onChunk: (chunk: C) => void): Stream<T> {
+        if (method !== 'readTree') return { done: new Promise<T>(() => {}), cancel() {} };
+        reads++;
+        return {
+          done: new Promise<T>((resolve) => {
+            finishes.push(() => {
+              onChunk([[0, 0, 'App', 'div', TREE_FLAGS.built | TREE_FLAGS.connected, 0]] as C);
+              resolve({ count: 1 } as T);
+            });
+          }),
+          cancel() {},
+        };
       },
-      onEvent: () => () => {},
-      onStatus(listener) {
-        statusListeners.add(listener);
-        return () => statusListeners.delete(listener);
+      onEvent(listener) {
+        eventListeners.add(listener);
+        return () => eventListeners.delete(listener);
       },
+      onStatus: () => () => {},
       onDock: () => () => {},
+      onShown: () => () => {},
       setDock() {},
       dispose() {},
     };
-    const model = new ElementsModel(client);
-    statusListeners.forEach((l) => l({ connected: true, version: 1 }));
+    const model = new ElementsModel(client, () => true, 0);
+    expect(reads).toBe(1);
+    for (const listener of eventListeners) listener({ type: 'tree:changed', payload: { parents: [[]] } });
+    for (const listener of eventListeners) listener({ type: 'component:built', payload: { path: [0] } });
     for (let i = 0; i < 4; i++) await tick();
-    expect(model.state.error).toBeNull();
-    failFirst(new Error('timeout'));
+    expect(reads).toBe(1);
+    finishes.shift()!();
     for (let i = 0; i < 4; i++) await tick();
-    expect(model.state.error).toBeNull();
+    expect(reads).toBe(2);
+    finishes.shift()!();
+    for (let i = 0; i < 4; i++) await tick();
+    expect(reads).toBe(2);
+    expect(model.state.total).toBe(1);
     model.dispose();
   });
 });

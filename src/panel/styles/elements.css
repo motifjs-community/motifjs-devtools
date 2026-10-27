@@ -48,11 +48,18 @@
 }
 
 .dt-tree {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   padding: 4px 0;
   font-family: var(--dt-mono);
+}
+
+.dt-tree-list {
+  flex: 1;
+  min-height: 0;
 }
 
 .dt-row {

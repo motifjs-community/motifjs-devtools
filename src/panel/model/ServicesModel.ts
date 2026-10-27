@@ -1,6 +1,7 @@
 import { reactive } from '@motifx/core';
 import type { Client } from '../../client/client';
 import { valueId, type ValueEntry, type ValueNode, type ValueSource } from '../ValueTree';
+import { READ_GAP, Reader } from './reader';
 
 export type Lifetime = 'singleton' | 'scoped' | 'transient';
 export type LifetimeFilter = Lifetime | 'all';
@@ -27,7 +28,6 @@ type ServiceEvent = { scope: number; token: string; lifetime: string };
 
 const KEY_SEP = '\u0002';
 const PATH_SEP = '\u0001';
-const LOAD_DELAY = 200;
 const ACTIVITY_LIMIT = 200;
 const RELOAD_EVENTS = new Set(['scopes:changed', 'service:created', 'service:disposed', 'route:navigation-end']);
 
@@ -88,7 +88,7 @@ export class ServicesModel {
     error: '',
   });
 
-  private timer: ReturnType<typeof setTimeout> | null = null;
+  private readonly reader: Reader;
   private loading = 0;
   private seq = 0;
   private readonly offs: (() => void)[] = [];
@@ -97,16 +97,17 @@ export class ServicesModel {
   constructor(
     private readonly client: Client,
     private readonly visible: () => boolean,
-    private readonly delay = LOAD_DELAY,
+    private readonly delay = READ_GAP,
     private readonly time: () => number = Date.now,
+    private readonly shown: () => boolean = () => true,
   ) {
+    this.reader = new Reader(() => this.load(), () => this.shown() && this.visible(), this.delay);
     this.offs.push(
       client.onStatus((status) => {
-        if (status.connected) void this.load();
+        if (status.connected) void this.reader.request(true);
       }),
       client.onEvent((event) => {
         if (event.type === 'service:created' || event.type === 'service:disposed') this.record(event.type, event.payload as ServiceEvent | undefined);
-        if (!this.visible()) return;
         if (RELOAD_EVENTS.has(event.type) || (event.type === 'reactivity:flush' && this.state.expanded !== null)) this.schedule();
       }),
     );
@@ -255,8 +256,12 @@ export class ServicesModel {
     await this.read(scope, token, keys);
   }
 
+  wake() {
+    this.reader.wake();
+  }
+
   dispose() {
-    if (this.timer !== null) clearTimeout(this.timer);
+    this.reader.dispose();
     for (const off of this.offs) off();
   }
 
@@ -298,10 +303,6 @@ export class ServicesModel {
   }
 
   private schedule() {
-    if (this.timer !== null) return;
-    this.timer = setTimeout(() => {
-      this.timer = null;
-      void this.load();
-    }, this.delay);
+    void this.reader.request();
   }
 }

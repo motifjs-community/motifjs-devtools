@@ -10,8 +10,11 @@ import {
   type BridgeStatus,
   type PageMemory,
 } from './protocol';
+import { createOutbox, type Outbox } from './outbox';
 import { createPicker, type Picker } from './picker';
+import { defaultScheduler, type Cancel, type Scheduler } from './schedule';
 import { toTransfer } from './serialize';
+import { streamTree } from './tree';
 
 type Contract = {
   version: number;
@@ -24,6 +27,7 @@ export interface BridgeOptions {
   host?: object;
   interval?: number;
   picker?: boolean;
+  scheduler?: Scheduler;
 }
 
 export interface Bridge {
@@ -53,7 +57,8 @@ const routeShape = (value: unknown): unknown =>
       })
     : toTransfer(value, 3);
 
-const pageTime = () => (typeof performance !== 'undefined' && typeof performance.timeOrigin === 'number' ? performance.timeOrigin + performance.now() : Date.now());
+const timeOrigin = typeof performance !== 'undefined' && typeof performance.timeOrigin === 'number' ? performance.timeOrigin : null;
+const pageTime = timeOrigin === null ? () => Date.now() : () => timeOrigin + performance.now();
 
 const readMemory = (): PageMemory | null => {
   const memory = (globalThis as { performance?: { memory?: { usedJSHeapSize?: unknown; totalJSHeapSize?: unknown; jsHeapSizeLimit?: unknown } } }).performance?.memory;
@@ -86,7 +91,9 @@ const SHAPES: Record<string, (value: unknown) => unknown> = {
       : toTransfer(value, 4),
 };
 
-export function createBridge({ send, host = globalThis, interval = 250, picker: withPicker = typeof document !== 'undefined' }: BridgeOptions): Bridge {
+export function createBridge({ send, host = globalThis, interval = 250, picker: withPicker = typeof document !== 'undefined', scheduler = defaultScheduler() }: BridgeOptions): Bridge {
+  const outbox: Outbox = createOutbox(send, scheduler);
+  const streams = new Map<number, Cancel>();
   let api: Contract | null = null;
   let picker: Picker | null = null;
   let off: (() => void) | null = null;
@@ -98,20 +105,14 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
     if (key === lastStatus) return;
     lastStatus = key;
     const address = (globalThis as { location?: { host?: string } }).location?.host;
-    send({ channel: CHANNEL, kind: 'status', ...status, ...(address ? { host: address } : {}) });
+    outbox.message({ channel: CHANNEL, kind: 'status', ...status, ...(address ? { host: address } : {}) });
   };
-
-  const transferEvent = (event: { type: string; payload?: unknown }) => ({
-    type: event.type,
-    payload: toTransfer(event.payload, event.type === 'reactivity:flush' ? 6 : 4),
-    time: pageTime(),
-  });
 
   const pickerOf = () => {
     if (!withPicker) return null;
     picker ??= createPicker(
       () => api as never,
-      (type, payload) => send({ channel: CHANNEL, kind: 'event', event: { type, payload: toTransfer(payload) } }),
+      (type, payload) => outbox.event(type, payload, pageTime()),
     );
     return picker;
   };
@@ -127,7 +128,7 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
       picker?.setPicking(false);
       picker?.highlight(null);
       api = next;
-      if (api !== null) off = api.on((event) => send({ channel: CHANNEL, kind: 'event', event: transferEvent(event) }));
+      if (api !== null) off = api.on((event) => outbox.event(event.type, event.payload, pageTime()));
     }
     if (api !== null) sendStatus(typeof api.coreVersion === 'string' ? { connected: true, version: api.version, coreVersion: api.coreVersion } : { connected: true, version: api.version });
     else if (candidate !== null) sendStatus({ connected: false, version: typeof candidate.version === 'number' ? candidate.version : null, reason: 'unsupported-version' });
@@ -138,6 +139,32 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
     send(ok
       ? { channel: CHANNEL, kind: 'response', id, ok: true, value: valueOrError }
       : { channel: CHANNEL, kind: 'response', id, ok: false, error: String(valueOrError) });
+  };
+
+  const readTree = (id: number) => {
+    const contract = api;
+    if (contract === null || typeof contract.getTree !== 'function') return reply(id, false, contract === null ? 'not-connected' : 'unknown-method');
+    const getTree = contract.getTree as (path: number[], depth: number) => never;
+    streams.get(id)?.();
+    streams.set(
+      id,
+      streamTree((path, depth) => getTree.call(contract, path, depth), {
+        slice: (records) => send({ channel: CHANNEL, kind: 'chunk', id, value: records }),
+        done: (count) => {
+          streams.delete(id);
+          reply(id, true, { count });
+        },
+        fail: (error) => {
+          streams.delete(id);
+          reply(id, false, error instanceof Error ? error.message : error);
+        },
+      }, scheduler.task),
+    );
+  };
+
+  const stopStreams = () => {
+    for (const cancel of streams.values()) cancel();
+    streams.clear();
   };
 
   const timer = setInterval(check, interval);
@@ -155,12 +182,16 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
         check();
       } else if (message.kind === 'request') {
         void bridge.handle(message);
+      } else if (message.kind === 'cancel') {
+        streams.get(message.id)?.();
+        streams.delete(message.id);
       }
     },
     async handle(request) {
       if (disposed) return;
       check();
       if (request.method === 'getMemory') return reply(request.id, true, readMemory());
+      if (request.method === 'readTree') return readTree(request.id);
       if (OWN_METHODS.has(request.method)) {
         const own = pickerOf();
         if (own === null || api === null) return reply(request.id, false, own === null ? 'unknown-method' : 'not-connected');
@@ -184,6 +215,8 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
       if (disposed) return;
       disposed = true;
       clearInterval(timer);
+      stopStreams();
+      outbox.clear();
       picker?.dispose();
       picker = null;
       off?.();
