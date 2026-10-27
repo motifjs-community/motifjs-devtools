@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { Application } from '@motifx/core';
+import { Application, errorHandler } from '@motifx/core';
 import type { Client, ClientEvent, ClientStatus } from '../src/client/client';
 import { DevtoolsModel } from '../src/panel/model/DevtoolsModel';
 import { StoresModel, displayName } from '../src/panel/model/StoresModel';
@@ -122,6 +122,34 @@ describe('Stores', () => {
     model!.setFilter('signal');
     await settle();
     expect(rows(root).map((row) => text(row.querySelector('.dt-store-name')))).toEqual(['ThemeService.theme#3']);
+  });
+
+  it('finds a store and its position without scanning the list, and forgets it after a reload', async () => {
+    const { stores } = await render();
+    expect(model!.itemOf(3)?.name).toBe('signal');
+    expect(model!.positionOf(3)).toBe(2);
+    expect(model!.itemOf(9)).toBeUndefined();
+    expect(model!.positionOf(9)).toBe(-1);
+    stores.splice(1, 1);
+    await model!.load();
+    expect(model!.itemOf(2)).toBeUndefined();
+    expect(model!.positionOf(3)).toBe(1);
+    expect(model!.nameOf(3)).toBe('ThemeService.theme');
+  });
+
+  it('a store that leaves the list on a reload does not throw in its row', async () => {
+    const { root, stores } = await render();
+    const reported: unknown[] = [];
+    const unbind = errorHandler.addListener((error) => reported.push(error));
+    try {
+      stores.splice(1, 1);
+      await model!.load();
+      await settle();
+      expect(reported).toEqual([]);
+      expect(rows(root).map((row) => text(row.querySelector('.dt-store-name')))).toEqual(['reactive#1', 'ThemeService.theme#3', 'computed#4']);
+    } finally {
+      unbind();
+    }
   });
 
   it('opens a store to show who keeps it and its value one level deep', async () => {

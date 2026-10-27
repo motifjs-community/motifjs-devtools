@@ -28,10 +28,14 @@ function HolderLink(props: { holder: StoreHolder; devtools: DevtoolsModel }) {
 
 function StoreEntry(props: { id: number; model: StoresModel; devtools: DevtoolsModel }) {
   const { id, model, devtools } = props;
-  const item = () => model.state.stores.find((s) => s.id === id);
+  const item = () => model.itemOf(id);
+  const name = () => {
+    const s = item();
+    return s === undefined ? '' : displayName(s);
+  };
   const open = () => model.state.expanded === id;
   const change = () => model.state.changes[id];
-  const number = () => String(model.state.stores.findIndex((s) => s.id === id) + 1).padStart(2, '0');
+  const number = () => String(model.positionOf(id) + 1).padStart(2, '0');
   const node = () => model.state.values[`${id}`];
   const entries = () => {
     const value = node();
@@ -52,7 +56,7 @@ function StoreEntry(props: { id: number; model: StoresModel; devtools: DevtoolsM
       <button type="button" class="dt-store-row" onclick={() => model.toggle(id)}>
         <span class="dt-mono dt-muted">{() => number()}</span>
         <span class="dt-store-name">
-          <b>{() => (item() === undefined ? '' : displayName(item()!))}</b>
+          <b>{() => name()}</b>
           <small>{`#${id}`}</small>
         </span>
         <span class={() => `dt-store-type ${item()?.type ?? ''}`}>{() => item()?.type ?? ''}</span>
