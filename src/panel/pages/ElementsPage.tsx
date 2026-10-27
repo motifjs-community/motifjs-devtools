@@ -23,7 +23,7 @@ function TreeRow(props: { row: Row; model: ElementsModel }) {
   const { row, model } = props;
   return (
     <div
-      class={() => `dt-row${model.state.selected === row.key ? ' selected' : ''}${row.named ? ' named' : ''}${row.connected ? '' : ' detached'}`}
+      class={() => `dt-row${model.state.selected === row.key ? ' selected' : ''}${row.named ? ' named' : ''}${row.connected ? '' : ' detached'}${row.mirror ? ' mirror' : ''}`}
       style={() => `--depth: ${row.depth}`}
       onclick={() => model.select(row)}
       onmouseenter={() => model.hover(row)}
@@ -37,6 +37,10 @@ function TreeRow(props: { row: Row; model: ElementsModel }) {
       <span class="dt-glyph" x-display={() => row.named}></span>
       <span class="dt-type" x-display={() => row.named}>{() => row.type}</span>
       <span class="dt-tag">{() => `<${row.tag}>`}</span>
+      <span class="dt-row-title" x-display={() => row.title !== null}>{() => row.title ?? ''}</span>
+      <span class="dt-flag away" x-display={() => row.away !== null} title="The element lives in another document">{() => row.away ?? ''}</span>
+      <span class="dt-flag hosted" x-display={() => row.hosted > 0} title="Components from the page tree whose elements live here">{() => `${row.hosted} hosted`}</span>
+      <span class="dt-flag mirror" x-display={() => row.mirror} title="Its place in the component tree is under the page root; this row follows the same component">page tree</span>
       <span class="dt-fill"></span>
       <span class="dt-flag waiting" x-display={() => row.waiting}>WAITING</span>
       <span class="dt-flag hidden" x-display={() => !row.visible && !row.waiting}>HIDDEN</span>
@@ -83,6 +87,7 @@ class Inspector extends Component<HTMLElement> {
                 class="dt-icon-button"
                 title={() => (data()?.visible ? 'Hide' : 'Show')}
                 aria-label="Toggle visibility"
+                x-display={() => (data()?.path.length ?? 0) > 1}
                 onclick={() => m.setVisible(!data()?.visible)}
               >
                 {() => visibilityGlyph(data()?.visible)}

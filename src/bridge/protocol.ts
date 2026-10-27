@@ -36,7 +36,7 @@ export type BridgeVisibility = { channel: typeof CHANNEL; kind: 'visibility'; sh
 
 export type PageMemory = { used: number; total: number; limit: number };
 
-export type TreeRecord = [depth: number, index: number, type: string, tag: string, flags: number, childCount: number];
+export type TreeRecord = [depth: number, index: number, type: string, tag: string, flags: number, childCount: number, document: number, title?: string];
 
 export const TREE_FLAGS = { built: 1, visible: 2, waiting: 4, disposed: 8, connected: 16 } as const;
 

@@ -7,8 +7,8 @@ import { ElementsPage } from '../src/panel/pages/ElementsPage';
 import { toTransfer } from '../src/bridge/serialize';
 import { drain, tick } from './helpers';
 
-const node = (path: number[], type: string, tag: string, children: unknown[] = [], extra = {}) => ({
-  path, type, tag, built: true, visible: true, waiting: false, disposed: false, connected: true, childCount: children.length, children, ...extra,
+const node = (path: number[], type: string, tag: string, children: unknown[] = [], extra: Record<string, unknown> = {}) => ({
+  path, type, tag, built: true, visible: true, waiting: false, disposed: false, connected: true, document: 0, childCount: children.length, children, ...extra,
 });
 
 const TREE = node([], 'Component', 'div', [
@@ -24,7 +24,10 @@ const recordsOf = (tree: TestNode): TreeRecord[] => {
   const out: TreeRecord[] = [];
   const walk = (n: TestNode) => {
     const flags = (n.built ? TREE_FLAGS.built : 0) | (n.visible ? TREE_FLAGS.visible : 0) | (n.waiting ? TREE_FLAGS.waiting : 0) | (n.disposed ? TREE_FLAGS.disposed : 0) | (n.connected ? TREE_FLAGS.connected : 0);
-    out.push([n.path.length, n.path.at(-1) ?? 0, n.type, n.tag, flags, n.children.length]);
+    const record: TreeRecord = [n.path.length, n.path.at(-1) ?? 0, n.type, n.tag, flags, n.children.length, (n as { document?: number }).document ?? 0];
+    const title = (n as { title?: unknown }).title;
+    if (typeof title === 'string') record.push(title);
+    out.push(record);
     for (const child of n.children as TestNode[]) walk(child);
   };
   walk(tree);
@@ -108,19 +111,43 @@ async function render(tree?: TestNode) {
 const rowTexts = (root: HTMLElement) => [...root.querySelectorAll('.dt-row')].map((row) => row.textContent?.replace(/\s+/g, ' ').trim());
 
 const FOREST = node([], 'Application', '#roots', [
-  node([0], 'Component', 'div', [node([0, 0], 'AppShell', 'div', [node([0, 0, 0], 'StatCard', 'article')])]),
-  node([1], 'Window', 'body', [node([1, 0], 'NoteEditor', 'section')]),
+  node([0], 'Component', 'div', [node([0, 0], 'AppShell', 'div', [node([0, 0, 0], 'StatCard', 'article', [], { document: 1 })])]),
+  node([1], 'Window', 'body', [node([1, 0], 'NoteEditor', 'section', [], { document: 1 })], { document: 1, title: 'Notlar' }),
 ]);
 
 describe('ElementsPage', () => {
   it('lists the shell and each window as top rows and leaves the root list itself out', async () => {
     const { page, root } = await render(FOREST);
-    expect(rowTexts(root)).toEqual(['<div>', 'AppShell<div>', 'StatCard<article>', 'Window<body>', 'NoteEditor<section>']);
-    expect(page.model.rows.map((row) => row.depth)).toEqual([0, 1, 2, 0, 1]);
+    expect(rowTexts(root)).toEqual(['<div>', 'AppShell<div>', 'StatCard<article>Notlar', 'Window<body>Notlar1 hosted', 'NoteEditor<section>', 'StatCard<article>page tree']);
+    expect(page.model.rows.map((row) => row.depth)).toEqual([0, 1, 2, 0, 1, 1]);
+    expect(page.model.rows.map((row) => row.away)).toEqual([null, null, 'Notlar', null, null, null]);
+    expect(page.model.rows.map((row) => row.mirror)).toEqual([false, false, false, false, false, true]);
+    expect(page.model.rows[3]).toMatchObject({ title: 'Notlar', hosted: 1 });
+    expect(page.model.rows[5]).toMatchObject({ path: [0, 0, 0], key: '1>0.0.0' });
     expect(root.querySelector('.dt-tree-head')?.textContent).toContain('5 / 5 NODES');
     page.model.setHidePlain(true);
     await drain();
-    expect(rowTexts(root)).toEqual(['<div>', 'AppShell<div>', 'StatCard<article>', 'Window<body>', 'NoteEditor<section>']);
+    expect(rowTexts(root)).toEqual(['<div>', 'AppShell<div>', 'StatCard<article>Notlar', 'Window<body>Notlar1 hosted', 'NoteEditor<section>', 'StatCard<article>page tree']);
+  });
+
+  it('finds the rows that live in a window by the window title', async () => {
+    const { page, root } = await render(FOREST);
+    page.model.setQuery('notlar');
+    await drain();
+    expect(rowTexts(root)).toEqual(['StatCard<article>Notlar', 'Window<body>Notlar1 hosted']);
+  });
+
+  it('walks a window\'s hosted tree under the window row and keeps the rows bound to the real component', async () => {
+    const { page, root, calls } = await render(FOREST);
+    page.model.select(page.model.rows[5]);
+    for (let i = 0; i < 4; i++) await tick();
+    expect(calls.some((c) => c.method === 'inspect' && JSON.stringify(c.args) === '[[0,0,0]]')).toBe(true);
+    page.model.hover(page.model.rows[5]);
+    expect(calls.at(-1)).toEqual({ method: 'highlight', args: [[0, 0, 0]] });
+    page.model.toggle(page.model.rows[3]);
+    await drain();
+    expect(rowTexts(root)).toEqual(['<div>', 'AppShell<div>', 'StatCard<article>Notlar', 'Window<body>Notlar1 hosted']);
+    expect(root.querySelector('.dt-tree-head')?.textContent).toContain('4 / 5 NODES');
   });
 
   it('shows what a window root is when it is selected', async () => {
@@ -133,6 +160,7 @@ describe('ElementsPage', () => {
     expect(section.textContent).toContain('popup');
     expect(section.textContent).toContain('Notlar');
     expect(section.textContent).toContain('open');
+    expect(inspector.querySelector('[aria-label="Toggle visibility"]')).toBeNull();
   });
 
   it('lists every component with names and tags', async () => {
@@ -171,6 +199,7 @@ describe('ElementsPage', () => {
     expect(calls.some((c) => c.method === 'inspect' && JSON.stringify(c.args) === '[[0,1]]')).toBe(true);
     const inspector = root.querySelector('.dt-inspector') as HTMLElement;
     expect(inspector.querySelector('.dt-inspect-title')?.textContent).toContain('StatCard');
+    expect(inspector.querySelector('[aria-label="Toggle visibility"]')).not.toBeNull();
     expect(inspector.querySelector('.dt-kv')?.textContent).toContain('"Total revenue"');
     expect(inspector.querySelector('.dt-kv')?.textContent).toContain('ƒ formatCurrency()');
     expect(inspector.querySelector('.dt-kv')?.textContent).not.toContain('runover');

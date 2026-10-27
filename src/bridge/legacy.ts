@@ -59,7 +59,7 @@ export function adaptLegacy(core: ContractLike): ContractLike {
   const forest = (depth: number) => {
     const shell = call<TreeNodeLike | null>('getTree', [], depth > 0 ? depth - 1 : 0);
     if (shell === null) return null;
-    const out: TreeNodeLike = { path: [], type: 'Application', tag: '#roots', built: true, visible: true, waiting: false, disposed: false, connected: true, childCount: 1 };
+    const out: TreeNodeLike = { path: [], type: 'Application', tag: '#roots', built: true, visible: true, waiting: false, disposed: false, connected: true, document: 0, childCount: 1 };
     if (depth > 0) out.children = [liftTree(shell)];
     return out;
   };

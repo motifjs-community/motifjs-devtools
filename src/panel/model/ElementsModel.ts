@@ -15,6 +15,8 @@ export type TreeNode = {
   waiting: boolean;
   disposed: boolean;
   connected: boolean;
+  document: number;
+  title?: string;
   childCount: number;
   children?: TreeNode[];
 };
@@ -31,6 +33,10 @@ export type Row = {
   connected: boolean;
   hasChildren: boolean;
   expanded: boolean;
+  title: string | null;
+  away: string | null;
+  hosted: number;
+  mirror: boolean;
 };
 
 export type Inspection = Omit<TreeNode, 'children'> & {
@@ -72,7 +78,7 @@ export function treeBuilder() {
       return root;
     },
     add(records: readonly TreeRecord[]) {
-      for (const [depth, index, type, tag, flags, childCount] of records) {
+      for (const [depth, index, type, tag, flags, childCount, document = 0, title] of records) {
         const parent = depth === 0 ? null : open[depth - 1];
         if (depth > 0 && parent === undefined) continue;
         const node: TreeNode = {
@@ -84,9 +90,11 @@ export function treeBuilder() {
           waiting: (flags & TREE_FLAGS.waiting) !== 0,
           disposed: (flags & TREE_FLAGS.disposed) !== 0,
           connected: (flags & TREE_FLAGS.connected) !== 0,
+          document,
           childCount,
           children: [],
         };
+        if (typeof title === 'string') node.title = title;
         if (parent === null) root = node;
         else parent.children!.push(node);
         open.length = depth;
@@ -106,6 +114,7 @@ export class ElementsModel {
     hidePlain: false,
     query: '',
     selected: null as string | null,
+    selectedPath: null as number[] | null,
     inspection: null as Inspection | null,
     tab: 'details' as 'details' | 'effects' | 'extensions',
     error: null as string | null,
@@ -238,6 +247,7 @@ export class ElementsModel {
   select(row: Row) {
     if (this.state.selected !== row.key) this.state.values = {};
     this.state.selected = row.key;
+    this.state.selectedPath = [...row.path];
     this.state.tab = 'details';
     void this.inspectReader.request(true);
   }
@@ -303,9 +313,7 @@ export class ElementsModel {
   }
 
   private selectedPath(): number[] | null {
-    const key = this.state.selected;
-    if (key === null) return null;
-    return key === '' ? [] : key.split('.').map(Number);
+    return this.state.selectedPath === null ? null : [...this.state.selectedPath];
   }
 
   private async inspectSelected() {
@@ -335,47 +343,73 @@ export class ElementsModel {
     const next: Row[] = [];
     let total = 0;
     let connected = 0;
+    let rowCount = 0;
     let work = 0;
     const query = this.state.query.trim().toLowerCase();
     const hidePlain = this.state.hidePlain;
     const budget = { rows: 0 };
-    const matches = (node: TreeNode) => query === '' || node.type.toLowerCase().includes(query) || node.tag.toLowerCase().includes(query);
     const roots = tree === null ? [] : rootsOf(tree);
-    const shown = (node: TreeNode) => (!hidePlain || isNamed(node.type) || roots.includes(node)) && matches(node);
+    const labels = new Map<number, string>();
+    for (const root of roots) if (root.document !== 0) labels.set(root.document, root.title || `${root.type} ${root.document}`);
+    const awayOf = (node: TreeNode, rootDocument: number) => (node.document === rootDocument ? null : labels.get(node.document) ?? `document ${node.document}`);
+    const hostedByDocument = new Map<number, number>();
+    const hostedTops = new Map<number, TreeNode[]>();
+    const matches = (node: TreeNode) => query === '' || node.type.toLowerCase().includes(query) || node.tag.toLowerCase().includes(query) || (node.title !== undefined && node.title.toLowerCase().includes(query));
+    const shown = (node: TreeNode, away: string | null) => (!hidePlain || isNamed(node.type) || roots.includes(node)) && (matches(node) || (away !== null && away.toLowerCase().includes(query)));
     const showsAny = new Map<TreeNode, boolean>();
     const current = () => ticket === this.rowsTicket && tree === this.tree;
 
     if (tree !== null) {
-      const stack: [TreeNode, number][] = roots.map((root) => [root, 0]);
+      const stack: [TreeNode, number, number, TreeNode | null][] = roots.map((root) => [root, 0, root.document, null]);
       while (stack.length > 0) {
         const top = stack[stack.length - 1];
-        const children = top[0].children ?? [];
+        const [node, , rootDocument, parent] = top;
+        const children = node.children ?? [];
         if (top[1] < children.length) {
-          stack.push([children[top[1]++], 0]);
+          stack.push([children[top[1]++], 0, rootDocument, node]);
           continue;
         }
         stack.pop();
         total++;
-        if (top[0].connected) connected++;
-        showsAny.set(top[0], children.some((child) => shown(child) || showsAny.get(child) === true));
+        if (node.connected) connected++;
+        if (node.document !== rootDocument) {
+          hostedByDocument.set(node.document, (hostedByDocument.get(node.document) ?? 0) + 1);
+          if (parent === null || parent.document !== node.document) {
+            const list = hostedTops.get(node.document);
+            if (list) list.push(node);
+            else hostedTops.set(node.document, [node]);
+          }
+        }
+        showsAny.set(node, children.some((child) => shown(child, awayOf(child, rootDocument)) || showsAny.get(child) === true));
         if (++work % ROWS_SLICE === 0) {
           await nextTask();
           if (!current()) return;
         }
       }
+      for (const root of roots) {
+        if (root.document === 0) continue;
+        const tops = hostedTops.get(root.document) ?? [];
+        if (tops.some((top) => shown(top, null) || showsAny.get(top) === true)) showsAny.set(root, true);
+      }
 
-      const visits: [TreeNode, number][] = roots.map((root) => [root, 0] as [TreeNode, number]).reverse();
+      type Visit = [TreeNode, number, number, string | null];
+      const visits: Visit[] = roots.map((root) => [root, 0, root.document, null] as Visit).reverse();
       while (visits.length > 0) {
-        const [node, depth] = visits.pop()!;
-        const show = shown(node);
+        const [node, depth, rootDocument, prefix] = visits.pop()!;
+        const away = prefix === null ? awayOf(node, rootDocument) : null;
+        const show = shown(node, away);
         const children = node.children ?? [];
+        const isRoot = prefix === null && roots.includes(node);
+        const tops = isRoot && node.document !== 0 ? hostedTops.get(node.document) ?? [] : [];
+        const key = (prefix === null ? '' : prefix + '>') + pathKey(node.path);
         let expanded = true;
         if (show) {
           budget.rows++;
-          const key = pathKey(node.path);
           const hasChildren = showsAny.get(node) === true;
           expanded = hasChildren && (query !== '' || this.isExpanded(key, budget));
-          next.push({ key, path: node.path, depth, type: node.type, tag: node.tag, named: isNamed(node.type), visible: node.visible, waiting: node.waiting, connected: node.connected, hasChildren, expanded });
+          const hosted = isRoot ? hostedByDocument.get(node.document) ?? 0 : 0;
+          if (prefix === null) rowCount++;
+          next.push({ key, path: node.path, depth, type: node.type, tag: node.tag, named: isNamed(node.type), visible: node.visible, waiting: node.waiting, connected: node.connected, hasChildren, expanded, title: node.title ?? null, away, hosted, mirror: prefix !== null });
         }
         if (++work % ROWS_SLICE === 0) {
           await nextTask();
@@ -383,7 +417,8 @@ export class ElementsModel {
         }
         if (!expanded && show) continue;
         const childDepth = show ? depth + 1 : depth;
-        for (let i = children.length - 1; i >= 0; i--) visits.push([children[i], childDepth]);
+        for (let i = tops.length - 1; i >= 0; i--) visits.push([tops[i], childDepth, node.document, key]);
+        for (let i = children.length - 1; i >= 0; i--) visits.push([children[i], childDepth, rootDocument, prefix]);
       }
     }
 
@@ -392,7 +427,7 @@ export class ElementsModel {
     this.state.total = total;
     this.state.connected = connected;
     this.state.detached = total - connected;
-    this.state.rowCount = next.length;
+    this.state.rowCount = rowCount;
     this.state.rowsVersion++;
   }
 }
