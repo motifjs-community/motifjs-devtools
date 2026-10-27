@@ -160,6 +160,27 @@
   color: var(--dt-muted);
 }
 
+.dt-row.mirror .dt-type,
+.dt-row.mirror .dt-tag {
+  opacity: 0.8;
+}
+
+.dt-flag.away,
+.dt-flag.hosted,
+.dt-flag.mirror {
+  color: var(--dt-muted);
+  font-weight: 500;
+  text-transform: none;
+}
+
+.dt-row-title {
+  color: var(--dt-muted);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dt-tree-foot {
   display: flex;
   align-items: center;

@@ -3,7 +3,7 @@ import type { Cancel } from './schedule';
 
 export const TREE_SLICE = 500;
 
-type TreeNodeLike = { type?: unknown; tag?: unknown; built?: unknown; visible?: unknown; waiting?: unknown; disposed?: unknown; connected?: unknown; childCount?: unknown };
+type TreeNodeLike = { type?: unknown; tag?: unknown; built?: unknown; visible?: unknown; waiting?: unknown; disposed?: unknown; connected?: unknown; document?: unknown; title?: unknown; childCount?: unknown };
 type ReadTree = (path: number[], depth: number) => TreeNodeLike | null;
 
 export interface TreeStream {
@@ -21,14 +21,19 @@ const flagsOf = (node: TreeNodeLike) =>
 
 const childCountOf = (node: TreeNodeLike) => (typeof node.childCount === 'number' && node.childCount > 0 ? node.childCount : 0);
 
-const recordOf = (path: number[], node: TreeNodeLike): TreeRecord => [
-  path.length,
-  path.length === 0 ? 0 : path[path.length - 1],
-  String(node.type ?? ''),
-  String(node.tag ?? ''),
-  flagsOf(node),
-  childCountOf(node),
-];
+const recordOf = (path: number[], node: TreeNodeLike): TreeRecord => {
+  const record: TreeRecord = [
+    path.length,
+    path.length === 0 ? 0 : path[path.length - 1],
+    String(node.type ?? ''),
+    String(node.tag ?? ''),
+    flagsOf(node),
+    childCountOf(node),
+    typeof node.document === 'number' ? node.document : 0,
+  ];
+  if (typeof node.title === 'string' && node.title !== '') record.push(node.title);
+  return record;
+};
 
 export function streamTree(read: ReadTree, out: TreeStream, task: (run: () => void) => Cancel, size = TREE_SLICE): Cancel {
   const stack: { path: number[]; next: number; count: number }[] = [];
