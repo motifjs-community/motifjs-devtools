@@ -1,6 +1,7 @@
 import {
   CHANNEL,
   CONTRACT_VERSION,
+  SUPPORTED_VERSIONS,
   PAGE_METHODS,
   READ_METHODS,
   WRITE_METHODS,
@@ -10,6 +11,7 @@ import {
   type BridgeStatus,
   type PageMemory,
 } from './protocol';
+import { adaptLegacy } from './legacy';
 import { createOutbox, type Outbox } from './outbox';
 import { createPicker, type Picker } from './picker';
 import { defaultScheduler, type Cancel, type Scheduler } from './schedule';
@@ -95,6 +97,7 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
   const outbox: Outbox = createOutbox(send, scheduler);
   const streams = new Map<number, Cancel>();
   let api: Contract | null = null;
+  let source: Contract | null = null;
   let picker: Picker | null = null;
   let off: (() => void) | null = null;
   let lastStatus = '';
@@ -121,14 +124,18 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
     if (disposed) return;
     const found = (host as { __MOTIF_DEVTOOLS__?: unknown }).__MOTIF_DEVTOOLS__;
     const candidate = typeof found === 'object' && found !== null && typeof (found as Contract).on === 'function' ? (found as Contract) : null;
-    const next = candidate !== null && candidate.version === CONTRACT_VERSION ? candidate : null;
-    if (next !== api) {
+    const next = candidate !== null && SUPPORTED_VERSIONS.includes(candidate.version) ? candidate : null;
+    if (next !== source) {
       off?.();
       off = null;
       picker?.setPicking(false);
       picker?.highlight(null);
-      api = next;
-      if (api !== null) off = api.on((event) => outbox.event(event.type, event.payload, pageTime()));
+      source = next;
+      api = next === null ? null : next.version === CONTRACT_VERSION ? next : (adaptLegacy(next) as Contract);
+      if (api !== null) off = api.on((event) => {
+        outbox.event(event.type, event.payload, pageTime());
+        if (event.type === 'documents:changed') picker?.documentsChanged();
+      });
     }
     if (api !== null) sendStatus(typeof api.coreVersion === 'string' ? { connected: true, version: api.version, coreVersion: api.coreVersion } : { connected: true, version: api.version });
     else if (candidate !== null) sendStatus({ connected: false, version: typeof candidate.version === 'number' ? candidate.version : null, reason: 'unsupported-version' });
@@ -222,6 +229,7 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
       off?.();
       off = null;
       api = null;
+      source = null;
     },
   };
   return bridge;

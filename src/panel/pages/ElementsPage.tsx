@@ -102,6 +102,23 @@ class Inspector extends Component<HTMLElement> {
           </header>
 
           <div class="dt-inspect-body" x-display={() => m.state.tab === 'details'}>
+            <details open x-display={() => data()?.window !== undefined}>
+              <Section title="Window" count={() => data()?.window?.components ?? 0} />
+              <ul class="dt-list">
+                <li>
+                  <span class="dt-muted">kind</span>
+                  <span>{() => data()?.window?.kind ?? ''}</span>
+                </li>
+                <li>
+                  <span class="dt-muted">title</span>
+                  <span>{() => data()?.window?.title ?? ''}</span>
+                </li>
+                <li>
+                  <span class="dt-muted">state</span>
+                  <span>{() => (data()?.window?.open ? 'open' : 'closed')}</span>
+                </li>
+              </ul>
+            </details>
             <details open>
               <Section title="Props" count={() => props().length} />
               <div class="dt-kv">

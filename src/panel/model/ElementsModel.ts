@@ -45,6 +45,7 @@ export type Inspection = Omit<TreeNode, 'children'> & {
   services: { scope: { kind: string; name: string | null } | null; requested: string[] } | null;
   effects: { kind: string; runs: number; lastDuration: number; lastTrigger: unknown; deps: unknown[] }[];
   extensions: Record<string, unknown>;
+  window?: { kind: string; title: string; open: boolean; components: number };
 };
 
 export type ValueOrigin = 'props' | 'functionProps' | 'fields';
@@ -57,6 +58,8 @@ const TREE_EVENTS = new Set(['tree:changed', 'component:built', 'component:visib
 export const ROWS_SLICE = 2000;
 
 export const isNamed = (type: string) => !PLAIN_TYPES.has(type);
+export const isForest = (node: TreeNode) => node.path.length === 0 && node.tag === '#roots';
+export const rootsOf = (tree: TreeNode) => (isForest(tree) ? tree.children ?? [] : [tree]);
 
 let runTask: ((run: () => void) => Cancel) | null = null;
 const nextTask = () => new Promise<void>((resolve) => void (runTask ??= taskRunner())(resolve));
@@ -337,12 +340,13 @@ export class ElementsModel {
     const hidePlain = this.state.hidePlain;
     const budget = { rows: 0 };
     const matches = (node: TreeNode) => query === '' || node.type.toLowerCase().includes(query) || node.tag.toLowerCase().includes(query);
-    const shown = (node: TreeNode) => (!hidePlain || isNamed(node.type) || node.path.length === 0) && matches(node);
+    const roots = tree === null ? [] : rootsOf(tree);
+    const shown = (node: TreeNode) => (!hidePlain || isNamed(node.type) || roots.includes(node)) && matches(node);
     const showsAny = new Map<TreeNode, boolean>();
     const current = () => ticket === this.rowsTicket && tree === this.tree;
 
     if (tree !== null) {
-      const stack: [TreeNode, number][] = [[tree, 0]];
+      const stack: [TreeNode, number][] = roots.map((root) => [root, 0]);
       while (stack.length > 0) {
         const top = stack[stack.length - 1];
         const children = top[0].children ?? [];
@@ -360,7 +364,7 @@ export class ElementsModel {
         }
       }
 
-      const visits: [TreeNode, number][] = [[tree, 0]];
+      const visits: [TreeNode, number][] = roots.map((root) => [root, 0] as [TreeNode, number]).reverse();
       while (visits.length > 0) {
         const [node, depth] = visits.pop()!;
         const show = shown(node);

@@ -56,8 +56,8 @@ afterEach(async () => {
 describe('page picker', () => {
   it('highlights a component by path with its name and size', async () => {
     start();
-    const tree = (await call('getTree')) as { value: { children: { children: { path: number[]; type: string }[] }[] } };
-    const card = tree.value.children[0].children[0];
+    const tree = (await call('getTree')) as { value: { children: { children: { children: { path: number[]; type: string }[] }[] }[] } };
+    const card = tree.value.children[0].children[0].children[0];
     expect(card.type).toBe('Card');
     expect(await call('highlight', card.path)).toMatchObject({ ok: true, value: true });
     const label = overlay()!.querySelector('.label') as HTMLElement;
@@ -98,6 +98,31 @@ describe('page picker', () => {
     await drain();
     expect(events('devtools:picked')).toHaveLength(0);
     expect(events('devtools:pick')).toEqual([{ active: true }, { active: false }]);
+  });
+
+  it('highlights and picks inside another window of the app', async () => {
+    start();
+    const frame = document.createElement('iframe');
+    document.body.appendChild(frame);
+    const win = app!.windows.attach(frame.contentWindow!);
+    const moved = new Component('p');
+    app!.getAppShell().controls.add(moved);
+    win.add(moved);
+    const path = (globalThis as unknown as { __MOTIF_DEVTOOLS__: { pathOfElement(n: Node): number[] | null } }).__MOTIF_DEVTOOLS__.pathOfElement(moved.element as Node)!;
+    expect(path).toEqual([1, 0]);
+    expect(await call('highlight', path)).toMatchObject({ ok: true, value: true });
+    const inner = frame.contentDocument!.querySelector('motif-devtools-overlay');
+    expect(inner).not.toBeNull();
+    expect((inner!.shadowRoot!.querySelector('.label') as HTMLElement).hidden).toBe(false);
+    expect(overlay()?.querySelector('.label')).toBeFalsy();
+    await call('pick', true);
+    let reached = false;
+    (moved.element as HTMLElement).addEventListener('click', () => (reached = true));
+    (moved.element as HTMLElement).dispatchEvent(new (frame.contentWindow as typeof window).MouseEvent('click', { bubbles: true, cancelable: true }));
+    expect(reached).toBe(false);
+    await drain();
+    expect(events('devtools:picked')).toEqual([{ path: [1, 0] }]);
+    await win.close();
   });
 
   it('refuses to pick before the app enables devtools', async () => {
