@@ -55,8 +55,12 @@ declare namespace chrome {
       function eval<T>(expression: string, callback?: (result: T, exception?: unknown) => void): void;
     }
     namespace panels {
+      interface ExtensionPanel {
+        onShown: ChromeEvent<(window: Window) => void>;
+        onHidden: ChromeEvent<() => void>;
+      }
       const themeName: string;
-      function create(title: string, iconPath: string, pagePath: string, callback?: (panel: unknown) => void): void;
+      function create(title: string, iconPath: string, pagePath: string, callback?: (panel: ExtensionPanel) => void): void;
     }
     namespace network {
       const onNavigated: ChromeEvent<(url: string) => void>;

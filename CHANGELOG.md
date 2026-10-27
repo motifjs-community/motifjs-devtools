@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-25
+
+### Added
+
+- `client.stream()` for answers that arrive in slices, the `readTree` page method and the `chunk` and `cancel` messages behind it.
+- `client.shown` and `client.onShown()`: the in-page panel learns when it is closed and opened again (`visibility` message), and the extension panel when its DevTools tab is hidden and shown.
+- The `scheduler` option of `createBridge`.
+
+### Changed
+
+- The panel is built with MotifJS 1.2.0-rc.21.
+- The bridge queues the app's events while the page works and sends them after the next frame, in messages of up to 500 events. An open panel no longer delays building or leaving a page.
+- Events are sent as `{ kind: 'events', events }` (`BridgeEvents`) instead of one `{ kind: 'event', event }` message (`BridgeEvent`) per event.
+- Elements reads the tree in slices of 500 components, computes its rows in slices and shows them in a virtual list. Opening it on a page with tens of thousands of components no longer blocks the page or the panel.
+- The panel reads from the page only while it is shown and while the screen that shows the data is open, at most every 250 ms or four times as long as the previous read took.
+
 ## [0.3.0] - 2026-10-23
 
 ### Changed

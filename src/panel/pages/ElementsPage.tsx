@@ -1,4 +1,4 @@
-import { Component, FromService } from '@motifx/core';
+import { Component, FromService, Virtualization } from '@motifx/core';
 import { formatPath } from '../format';
 import { DevtoolsModel } from '../model/DevtoolsModel';
 import { ElementsModel, type Row } from '../model/ElementsModel';
@@ -9,6 +9,13 @@ const activeText = (active: boolean | null) => (active === false ? 'inactive' : 
 const eventKind = (dom: boolean) => (dom ? 'dom' : 'component');
 
 const isGetter = (value: unknown) => typeof value === 'object' && value !== null && (value as { kind?: unknown }).kind === 'getter';
+
+const DEFAULT_ROW_HEIGHT = 28;
+
+const rowHeight = () => {
+  const value = typeof getComputedStyle === 'function' ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dt-row')) : NaN;
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_ROW_HEIGHT;
+};
 
 const FRAMEWORK_PROPS = new Set(['indexkey', 'runover', 'childs', 'initializeComponent', 'oninitializeComponent', 'key', 'ref', 'options', 'transition']);
 
@@ -221,16 +228,40 @@ class Inspector extends Component<HTMLElement> {
 export class ElementsPage extends Component<HTMLElement> {
   static override elementTag = 'section';
   devtools = FromService(DevtoolsModel)!;
-  model = new ElementsModel(this.devtools.client);
+  model = new ElementsModel(this.devtools.client, () => this.devtools.state.shown && this.devtools.state.section === 'elements');
+  readonly height = rowHeight();
+  list = new Virtualization<Row>({
+    itemHeight: this.height,
+    autoRefresh: false,
+    className: 'dt-tree-list',
+    dataRequest: async () => ({ items: this.model.rows, totalCount: this.model.rows.length, hasMore: false }),
+    itemTemplate: (row) => <TreeRow row={row} model={this.model} />,
+  });
 
   override onConfigured() {
     this.class.add('dt-elements');
     this.motif.setDisposable(() => this.model.dispose());
     this.motif.setDisposable(this.devtools.onReveal((path) => void this.model.reveal(path)));
     this.bindings.watch(() => {
-      if (this.model.state.revealed === 0) return;
-      requestAnimationFrame(() => (this.element as HTMLElement).querySelector('.dt-row.selected')?.scrollIntoView({ block: 'nearest' }));
+      const active = this.devtools.state.shown && this.devtools.state.section === 'elements';
+      queueMicrotask(() => (active ? this.model.wake() : this.model.pause()));
     });
+    this.bindings.watch(() => {
+      if (this.model.state.rowsVersion === 0) return;
+      queueMicrotask(() => this.list.setData(this.model.rows));
+    });
+    this.bindings.watch(() => {
+      if (this.model.state.revealed === 0) return;
+      requestAnimationFrame(() => this.scrollToSelected());
+    });
+  }
+
+  private scrollToSelected() {
+    const index = this.model.rows.findIndex((row) => row.key === this.model.state.selected);
+    const scroller = this.list.wrapper?.element as HTMLElement | undefined;
+    if (index < 0 || scroller === undefined) return;
+    const top = index * this.height;
+    if (top < scroller.scrollTop || top + this.height > scroller.scrollTop + scroller.clientHeight) this.list.scrollToIndex(index);
   }
 
   override view() {
@@ -261,12 +292,10 @@ export class ElementsPage extends Component<HTMLElement> {
           </div>
           <div class="dt-tree-head">
             <span>COMPONENT TREE</span>
-            <span>{() => `${m.state.rows.length} / ${m.state.total} NODES`}</span>
+            <span>{() => `${m.state.rowCount} / ${m.state.total} NODES`}</span>
           </div>
           <div class="dt-tree" role="tree" onmouseleave={() => m.hover(null)}>
-            {m.state.rows.map((row) => (
-              <TreeRow key={row.key} row={row} model={m} />
-            ))}
+            {this.list}
           </div>
           <footer class="dt-tree-foot">
             <span>

@@ -1,4 +1,7 @@
 import { ComponentBase, disposableCore, IDisposable } from '@motifx/core';
+import type { BridgeEventData, BridgeMessage } from '../src/bridge/protocol';
+import type { Scheduler } from '../src/bridge/schedule';
+import type { Stream } from '../src/client/client';
 
 /** Reactive updates flush on a microtask; await this before asserting on the DOM. */
 export const tick = () => Promise.resolve();
@@ -38,4 +41,33 @@ export function trackComponents() {
       disposableCore.disposableTracker = previous;
     },
   };
+}
+
+export const idleClient = {
+  shown: true,
+  stream: <T>(): Stream<T> => ({ done: new Promise<T>(() => {}), cancel() {} }),
+  onShown: () => () => {},
+};
+
+export const microScheduler: Scheduler = {
+  frame: (run) => later(run),
+  task: (run) => later(run),
+  timer: (run, ms) => {
+    const id = setTimeout(run, ms);
+    return () => clearTimeout(id);
+  },
+};
+
+function later(run: () => void) {
+  let live = true;
+  queueMicrotask(() => live && run());
+  return () => {
+    live = false;
+  };
+}
+
+export const eventsIn = (messages: readonly BridgeMessage[]): BridgeEventData[] => messages.flatMap((m) => (m.kind === 'events' ? m.events : []));
+
+export async function drain(rounds = 6) {
+  for (let i = 0; i < rounds; i++) await tick();
 }

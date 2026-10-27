@@ -9,15 +9,21 @@ It reads the devtools contract the core puts on `globalThis.__MOTIF_DEVTOOLS__` 
 ## Layout
 
 - `src/bridge/`: runs in the inspected page. `bridge.ts` follows `__MOTIF_DEVTOOLS__`, answers requests from
-  an allow list and forwards contract events; `serialize.ts` turns every value into JSON data; `picker.ts` and
-  `overlay.ts` do the select-in-page and highlight; `protocol.ts` holds the message types and method lists.
-- `src/client/`: runs in the panel. `createClient(port)` sends requests and receives responses, events, the
-  connection status and the dock position.
+  an allow list and forwards contract events; `outbox.ts` queues events and status, and sends them after the next
+  frame in slices of 500 (`DEFERRED` events are copied when sent, all others when they happen); `copy.ts` is the
+  fast copy for those frequent events and must give the same result as `toTransfer`; `tree.ts` streams the
+  component tree for `readTree` in slices; `schedule.ts` holds the frame, task (`MessageChannel`) and timer
+  functions; `serialize.ts` turns every value into JSON data; `picker.ts` and `overlay.ts` do the select-in-page
+  and highlight; `protocol.ts` holds the message types and method lists.
+- `src/client/`: runs in the panel. `createClient(port)` sends requests and streams, and receives responses,
+  chunks, event batches, the connection status, the dock position and whether the host shows the panel.
 - `src/transport/window.ts`: a `Port` over `postMessage` between two windows.
 - `src/inpage/`: `mount()`, the button and the docked iframe / separate window in the inspected page. Without
   `src` or `html` it loads the panel from `virtual:motif-devtools-panel`.
 - `src/panel/`: the panel app, written in MotifJS. `model/` holds the state (`DevtoolsModel`,
-  `ElementsModel`), `pages/` the screens, `styles/` the CSS with light and dark tokens.
+  `ElementsModel`), `pages/` the screens, `styles/` the CSS with light and dark tokens. Every automatic read from
+  the page goes through `model/reader.ts`: only while the panel is shown and its screen is open, one read at a
+  time, at most every 250 ms or four times the last read; a user action reads at once.
 - `scripts/panel.ts`: the Vite plugin behind `virtual:motif-devtools-panel`. In a build it compiles `src/panel` with
   its own copy of `@motifx/core` into one HTML page and exports it as a string; on the dev server it exports a page
   that loads `src/panel/main.tsx` from the server.
@@ -77,6 +83,10 @@ Full rules: <https://motifjs.com/llms.txt>
 - A child getter that returns an object is placed as a component and fails. Return text from text getters.
 - `event.composedPath()` is empty once the event has finished; read the target while handling it.
 - `noImplicitOverride` is on: lifecycle methods and `view()` need `override`.
+- Bridge events arrive after the next frame. In tests create the bridge with `scheduler: microScheduler` from
+  `tests/helpers.ts` and `await drain()` before reading the sent messages.
+- The Elements tree is a `Virtualization` list. jsdom has no layout, so tests give elements a `clientHeight`
+  (see `tests/elements.test.tsx`), and the rows reach the DOM one microtask after the model changes.
 
 ## Where to look
 

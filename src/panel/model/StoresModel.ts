@@ -3,6 +3,7 @@ import type { Client } from '../../client/client';
 import { MARK } from '../../bridge/serialize';
 import { formatValue } from '../format';
 import { valueId, type ValueEntry, type ValueNode, type ValueSource } from '../ValueTree';
+import { READ_GAP, Reader } from './reader';
 
 export type StoreType = 'reactive' | 'signal' | 'computed';
 export type StoreTypeFilter = StoreType | 'all';
@@ -35,7 +36,6 @@ export function summaryOf(value: unknown): string {
 
 const KEY_SEP = '\u0002';
 const PATH_SEP = '\u0001';
-const LOAD_DELAY = 300;
 const RELOAD_EVENTS = new Set(['stores:changed', 'tree:changed', 'component:disposed']);
 
 export class StoresModel {
@@ -51,7 +51,7 @@ export class StoresModel {
     error: '',
   });
 
-  private timer: ReturnType<typeof setTimeout> | null = null;
+  private readonly reader: Reader;
   private loading = 0;
   private readonly offs: (() => void)[] = [];
   private readonly sources = new Map<number, ValueSource>();
@@ -59,28 +59,26 @@ export class StoresModel {
   constructor(
     private readonly client: Client,
     private readonly visible: () => boolean,
-    private readonly delay = LOAD_DELAY,
+    private readonly delay = READ_GAP,
     private readonly time: () => number = Date.now,
+    private readonly shown: () => boolean = () => true,
   ) {
+    this.reader = new Reader(() => this.load(), () => this.shown() && this.visible(), this.delay);
     this.offs.push(
       client.onStatus((status) => {
-        if (status.connected) void this.load();
+        if (status.connected) void this.reader.request(true);
       }),
       client.onEvent((event) => {
         if (RELOAD_EVENTS.has(event.type)) {
-          if (this.visible()) this.schedule();
+          this.schedule();
           return;
         }
         if (event.type !== 'reactivity:flush') return;
         const triggers = ((event.payload as { triggers?: FlushTrigger[] } | undefined)?.triggers ?? []).filter((t) => t.store !== undefined);
         if (triggers.length === 0) return;
         const at = this.time();
-        let unknown = false;
-        for (const t of triggers) {
-          this.state.changes[t.store!.id] = { path: t.store!.path, key: t.key, at };
-          if (!this.state.stores.some((s) => s.id === t.store!.id)) unknown = true;
-        }
-        if (unknown || this.visible()) this.schedule();
+        for (const t of triggers) this.state.changes[t.store!.id] = { path: t.store!.path, key: t.key, at };
+        this.schedule();
       }),
     );
   }
@@ -185,8 +183,12 @@ export class StoresModel {
     await this.load();
   }
 
+  wake() {
+    this.reader.wake();
+  }
+
   dispose() {
-    if (this.timer !== null) clearTimeout(this.timer);
+    this.reader.dispose();
     for (const off of this.offs) off();
   }
 
@@ -214,11 +216,7 @@ export class StoresModel {
   }
 
   private schedule() {
-    if (this.timer !== null) return;
-    this.timer = setTimeout(() => {
-      this.timer = null;
-      void this.load();
-    }, this.delay);
+    void this.reader.request();
   }
 }
 

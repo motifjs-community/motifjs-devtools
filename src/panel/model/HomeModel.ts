@@ -1,6 +1,7 @@
 import { reactive } from '@motifx/core';
 import type { Client } from '../../client/client';
 import { routeRows } from './RouterModel';
+import { READ_GAP, Reader } from './reader';
 
 export type HomeLink = { id: string; title: string; note: string; href: string; icon: string };
 
@@ -29,20 +30,22 @@ export class HomeModel {
   });
 
   private loading = 0;
-  private timer: ReturnType<typeof setTimeout> | null = null;
+  private readonly reader: Reader;
   private readonly offs: (() => void)[] = [];
 
   constructor(
     private readonly client: Client,
     private readonly visible: () => boolean,
-    private readonly delay = 300,
+    private readonly delay = READ_GAP,
+    private readonly shown: () => boolean = () => true,
   ) {
+    this.reader = new Reader(() => this.load(), () => this.shown() && this.visible(), this.delay);
     this.offs.push(
       client.onStatus((status) => {
-        if (status.connected) void this.load();
+        if (status.connected) void this.reader.request(true);
       }),
       client.onEvent((event) => {
-        if (RELOAD_EVENTS.has(event.type) && this.visible()) this.schedule();
+        if (RELOAD_EVENTS.has(event.type)) this.schedule();
       }),
     );
   }
@@ -62,16 +65,16 @@ export class HomeModel {
     } catch {}
   }
 
+  wake() {
+    this.reader.wake();
+  }
+
   dispose() {
-    if (this.timer !== null) clearTimeout(this.timer);
+    this.reader.dispose();
     for (const off of this.offs) off();
   }
 
   private schedule() {
-    if (this.timer !== null) return;
-    this.timer = setTimeout(() => {
-      this.timer = null;
-      void this.load();
-    }, this.delay);
+    void this.reader.request();
   }
 }

@@ -5,7 +5,7 @@ import { DevtoolsModel } from '../src/panel/model/DevtoolsModel';
 import { HomeModel, LINKS } from '../src/panel/model/HomeModel';
 import { HomePage } from '../src/panel/pages/HomePage';
 import { VERSION } from '../src/version';
-import { tick } from './helpers';
+import { idleClient, tick } from './helpers';
 
 const settle = async () => {
   for (let i = 0; i < 8; i++) await tick();
@@ -33,6 +33,7 @@ function fakeClient(routes: unknown = [{ path: '/', fullPath: '/', childs: [{ pa
     },
     onStatus: () => () => {},
     onDock: () => () => {},
+    ...idleClient,
     setDock() {},
     dispose() {},
   };

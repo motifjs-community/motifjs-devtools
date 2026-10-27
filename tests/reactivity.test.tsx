@@ -5,7 +5,7 @@ import { DevtoolsModel } from '../src/panel/model/DevtoolsModel';
 import { MAX_FLUSHES, ReactivityModel } from '../src/panel/model/ReactivityModel';
 import { ReactivityPage } from '../src/panel/pages/ReactivityPage';
 import { StoresModel } from '../src/panel/model/StoresModel';
-import { tick } from './helpers';
+import { idleClient, tick } from './helpers';
 
 const settle = async () => {
   for (let i = 0; i < 4; i++) await tick();
@@ -21,11 +21,13 @@ const COUNTERS = {
 
 function fakeClient() {
   const listeners = new Set<(event: ClientEvent) => void>();
+  const server = { stores: [] as unknown[] };
   const client: Client = {
     status: { connected: true, version: 1 } as ClientStatus,
     dock: null,
     async request<T>(method: string) {
       if (method === 'getCounters') return COUNTERS as T;
+      if (method === 'getStores') return server.stores as T;
       return [] as T;
     },
     onEvent(listener) {
@@ -34,13 +36,14 @@ function fakeClient() {
     },
     onStatus: () => () => {},
     onDock: () => () => {},
+    ...idleClient,
     setDock() {},
     dispose() {},
   };
   const emit = (event: ClientEvent) => {
     for (const listener of listeners) listener(event);
   };
-  return { client, emit };
+  return { client, emit, server };
 }
 
 const flush = (duration: number, runs: number, extra = {}) => ({
@@ -69,7 +72,7 @@ afterEach(async () => {
 });
 
 async function render(time = () => 1_000_000) {
-  const { client, emit } = fakeClient();
+  const { client, emit, server } = fakeClient();
   const devtools = new DevtoolsModel(client);
   devtools.state.status = { connected: true, version: 1 };
   model = new ReactivityModel(client, time);
@@ -83,7 +86,7 @@ async function render(time = () => 1_000_000) {
   app.run('#app', new ReactivityPage());
   await devtools.refresh();
   await tick();
-  return { emit, devtools, stores, root: document.querySelector('.dt-profile') as HTMLElement };
+  return { emit, devtools, stores, server, root: document.querySelector('.dt-profile') as HTMLElement };
 }
 
 const rows = (root: HTMLElement) => [...root.querySelectorAll('.dt-flush .dt-flush-row')];
@@ -154,8 +157,9 @@ describe('Reactivity', () => {
   });
 
   it('names the store and path of a trigger', async () => {
-    const { emit, root, stores } = await render();
+    const { emit, root, stores, server } = await render();
     stores.state.stores = [{ id: 2, name: 'Cart', type: 'reactive', value: {}, holders: [{ kind: 'component', path: [0], type: 'CartView', field: 'cart' }] }];
+    server.stores = stores.state.stores;
     const target = { kind: 'object', type: 'Cart', keys: 2 };
     emit(flush(1, 1, { triggers: [{ target, key: 'name', count: 1, store: { id: 2, path: ['user'] } }, { target, key: 'n', count: 1, store: { id: 9, path: [] } }] }));
     await tick();

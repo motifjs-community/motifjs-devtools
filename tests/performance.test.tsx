@@ -6,7 +6,7 @@ import { HISTORY, PerformanceModel, type TimelineEntry } from '../src/panel/mode
 import { StoresModel } from '../src/panel/model/StoresModel';
 import { PerformancePage } from '../src/panel/pages/PerformancePage';
 import { axisTicks, describeEntry, formatBytes, formatDuration, laneBars, lineChart, rangeStyle } from '../src/panel/timeline';
-import { tick } from './helpers';
+import { idleClient, tick } from './helpers';
 
 const settle = async () => {
   for (let i = 0; i < 6; i++) await tick();
@@ -39,6 +39,7 @@ function fakeClient(memory: unknown = { used: 12 * 1024 * 1024, total: 20 * 1024
     },
     onStatus: () => () => {},
     onDock: () => () => {},
+    ...idleClient,
     setDock() {},
     dispose() {},
   };

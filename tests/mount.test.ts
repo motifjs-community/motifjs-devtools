@@ -76,6 +76,19 @@ describe('mount', () => {
     expect(post).toHaveBeenCalledWith({ channel: CHANNEL, kind: 'dock', position: 'bottom' }, expect.anything());
   });
 
+  it('tells the panel when it is closed and opened again', () => {
+    handle = mount({ html: '', open: true });
+    const post = vi.spyOn(frame().contentWindow!, 'postMessage');
+    fromFrame({ channel: CHANNEL, kind: 'hello' });
+    expect(post).toHaveBeenCalledWith({ channel: CHANNEL, kind: 'visibility', shown: true }, expect.anything());
+    post.mockClear();
+    handle.close();
+    expect(post).toHaveBeenCalledWith({ channel: CHANNEL, kind: 'visibility', shown: false }, expect.anything());
+    post.mockClear();
+    handle.open();
+    expect(post).toHaveBeenCalledWith({ channel: CHANNEL, kind: 'visibility', shown: true }, expect.anything());
+  });
+
   it('stays docked when the browser blocks the separate window', () => {
     vi.spyOn(window, 'open').mockReturnValue(null);
     handle = mount({ html: '', open: true });

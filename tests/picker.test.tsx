@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { Application, Component } from '@motifx/core';
 import { createBridge, type Bridge } from '../src/bridge/bridge';
 import { CHANNEL, type BridgeMessage, type BridgeResponse } from '../src/bridge/protocol';
+import { drain, eventsIn, microScheduler } from './helpers';
 
 function Card() {
   return (
@@ -28,7 +29,7 @@ const call = async (method: string, ...args: unknown[]) => {
   return messages.find((m): m is BridgeResponse => m.kind === 'response' && m.id === id)!;
 };
 
-const events = (type: string) => messages.filter((m) => m.kind === 'event' && m.event.type === type).map((m) => (m as { event: { payload: unknown } }).event.payload);
+const events = (type: string) => eventsIn(messages).filter((e) => e.type === type).map((e) => e.payload);
 const overlay = () => document.querySelector('motif-devtools-overlay')?.shadowRoot ?? null;
 
 const start = () => {
@@ -37,7 +38,7 @@ const start = () => {
   app.useDevelopment(true);
   app.run('#app', new Root());
   messages = [];
-  bridge = createBridge({ send: (message) => messages.push(message) });
+  bridge = createBridge({ send: (message) => messages.push(message), scheduler: microScheduler });
 };
 
 afterEach(async () => {
@@ -70,12 +71,14 @@ describe('page picker', () => {
   it('picks the clicked component and stops picking', async () => {
     start();
     expect(await call('pick', true)).toMatchObject({ ok: true, value: true });
+    await drain();
     expect(events('devtools:pick')).toEqual([{ active: true }]);
     let reached = false;
     const title = document.querySelector('.title') as HTMLElement;
     title.addEventListener('click', () => (reached = true));
     title.click();
     expect(reached).toBe(false);
+    await drain();
     const picked = events('devtools:picked') as { path: number[] }[];
     expect(picked).toHaveLength(1);
     const node = (await call('getTree', picked[0].path, 0)) as { value: { tag: string } };
@@ -91,13 +94,14 @@ describe('page picker', () => {
     const host = document.createElement('motif-devtools');
     document.body.appendChild(host);
     host.click();
-    expect(events('devtools:picked')).toHaveLength(0);
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await drain();
+    expect(events('devtools:picked')).toHaveLength(0);
     expect(events('devtools:pick')).toEqual([{ active: true }, { active: false }]);
   });
 
   it('refuses to pick before the app enables devtools', async () => {
-    bridge = createBridge({ send: (message) => messages.push(message) });
+    bridge = createBridge({ send: (message) => messages.push(message), scheduler: microScheduler });
     expect(await call('pick', true)).toMatchObject({ ok: false, error: 'not-connected' });
   });
 });
