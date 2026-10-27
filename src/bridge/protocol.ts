@@ -1,5 +1,6 @@
 export const CHANNEL = 'motif-devtools';
-export const CONTRACT_VERSION = 1;
+export const CONTRACT_VERSION = 2;
+export const SUPPORTED_VERSIONS: readonly number[] = [1, 2];
 
 export type BridgeRequest = { channel: typeof CHANNEL; kind: 'request'; id: number; method: string; args: unknown[] };
 
@@ -44,6 +45,7 @@ export type BridgeMessage = BridgeHello | BridgeDock | BridgeRequest | BridgeRes
 export const READ_METHODS = [
   'isEnabled',
   'getTree',
+  'getDocuments',
   'inspect',
   'getServices',
   'getScopes',

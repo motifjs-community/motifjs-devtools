@@ -53,6 +53,7 @@ function fakeClient(tree: TestNode = TREE) {
     dock: null,
     async request<T>(method: string, ...args: unknown[]) {
       calls.push({ method, args });
+      if (method === 'inspect' && JSON.stringify(args[0]) === '[1]') return toTransfer({ ...INSPECTION, path: [1], type: 'Window', tag: 'body', functionProps: undefined, window: { kind: 'popup', title: 'Notlar', open: true, components: 1 } }, 6) as T;
       if (method === 'inspect') return toTransfer({ ...INSPECTION, bindings: [...INSPECTION.bindings, { kind: 'list', property: undefined, member: undefined, active: null }] }, 6) as T;
       if (method === 'getCounters') return { components: { live: 0, inTree: 0, notInTree: 0, byType: {} }, bindings: 0, listeners: { dom: 0, component: 0 }, effects: { live: 0, owned: 0 }, reactivity: { runs: 0, flushes: 0, flushRuns: 0, lastFlushDuration: 0, maxFlushDuration: 0 } } as T;
       if (method === 'setClass' || method === 'setVisible') return { ok: true } as T;
@@ -106,7 +107,34 @@ async function render(tree?: TestNode) {
 
 const rowTexts = (root: HTMLElement) => [...root.querySelectorAll('.dt-row')].map((row) => row.textContent?.replace(/\s+/g, ' ').trim());
 
+const FOREST = node([], 'Application', '#roots', [
+  node([0], 'Component', 'div', [node([0, 0], 'AppShell', 'div', [node([0, 0, 0], 'StatCard', 'article')])]),
+  node([1], 'Window', 'body', [node([1, 0], 'NoteEditor', 'section')]),
+]);
+
 describe('ElementsPage', () => {
+  it('lists the shell and each window as top rows and leaves the root list itself out', async () => {
+    const { page, root } = await render(FOREST);
+    expect(rowTexts(root)).toEqual(['<div>', 'AppShell<div>', 'StatCard<article>', 'Window<body>', 'NoteEditor<section>']);
+    expect(page.model.rows.map((row) => row.depth)).toEqual([0, 1, 2, 0, 1]);
+    expect(root.querySelector('.dt-tree-head')?.textContent).toContain('5 / 5 NODES');
+    page.model.setHidePlain(true);
+    await drain();
+    expect(rowTexts(root)).toEqual(['<div>', 'AppShell<div>', 'StatCard<article>', 'Window<body>', 'NoteEditor<section>']);
+  });
+
+  it('shows what a window root is when it is selected', async () => {
+    const { page, root } = await render(FOREST);
+    page.model.select(page.model.rows[3]);
+    for (let i = 0; i < 4; i++) await tick();
+    const inspector = root.querySelector('.dt-inspector') as HTMLElement;
+    expect(inspector.querySelector('.dt-inspect-title')?.textContent).toContain('Window');
+    const section = [...inspector.querySelectorAll('details')].find((d) => d.querySelector('summary')?.textContent?.includes('Window')) as HTMLElement;
+    expect(section.textContent).toContain('popup');
+    expect(section.textContent).toContain('Notlar');
+    expect(section.textContent).toContain('open');
+  });
+
   it('lists every component with names and tags', async () => {
     const { root } = await render();
     expect(rowTexts(root)).toEqual(['<div>', 'AppShell<div>', '<header>', 'UserMenu<button>WAITING', 'StatCard<article>', '<#text>']);

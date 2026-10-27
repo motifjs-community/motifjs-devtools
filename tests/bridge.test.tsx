@@ -72,15 +72,15 @@ describe('bridge', () => {
     expect(messages[0]).toMatchObject({ channel: CHANNEL, kind: 'status', connected: false, version: null, reason: 'missing' });
     runApp();
     vi.advanceTimersByTime(20);
-    expect(messages.at(-1)).toMatchObject({ channel: CHANNEL, kind: 'status', connected: true, version: 1 });
+    expect(messages.at(-1)).toMatchObject({ channel: CHANNEL, kind: 'status', connected: true, version: 2 });
     expect((messages.at(-1) as { coreVersion?: string }).coreVersion).toMatch(/^\d+\.\d+\.\d+/);
     expect(messages.filter((m) => m.kind === 'status')).toHaveLength(2);
   });
 
   it('refuses an unknown contract version', () => {
-    (globalThis as { __MOTIF_DEVTOOLS__?: unknown }).__MOTIF_DEVTOOLS__ = { version: 2, on: () => () => {} };
+    (globalThis as { __MOTIF_DEVTOOLS__?: unknown }).__MOTIF_DEVTOOLS__ = { version: 3, on: () => () => {} };
     start();
-    expect(messages.at(-1)).toMatchObject({ channel: CHANNEL, kind: 'status', connected: false, version: 2, reason: 'unsupported-version' });
+    expect(messages.at(-1)).toMatchObject({ channel: CHANNEL, kind: 'status', connected: false, version: 3, reason: 'unsupported-version' });
     expect(bridge!.connected).toBe(false);
   });
 
@@ -109,7 +109,7 @@ describe('bridge', () => {
     start();
     const response = (await call('getStores')) as { value: { holders: { field: string }[]; value: unknown }[] };
     const store = response.value.find((s) => s.holders.some((h) => h.field === 'state'))!;
-    expect(store.holders).toEqual([{ kind: 'component', path: [0], type: 'Counter', field: 'state' }]);
+    expect(store.holders).toEqual([{ kind: 'component', path: [0, 0], type: 'Counter', field: 'state' }]);
     expect(store.value).toEqual({ count: 0 });
     expect('released' in store).toBe(false);
   });
@@ -177,7 +177,7 @@ describe('bridge', () => {
   it('keeps the preview of every entry when a value is opened', async () => {
     runApp();
     start();
-    const tree = (await call('readValue', [0], 'fields', [])) as { value: { ok: boolean; value: { entries: { key: string; value: unknown }[] } } };
+    const tree = (await call('readValue', [0, 0], 'fields', [])) as { value: { ok: boolean; value: { entries: { key: string; value: unknown }[] } } };
     expect(tree.value.value.entries.find((e) => e.key === 'state')?.value).toEqual({ kind: 'object', type: 'Object', keys: 1 });
   });
 
@@ -264,7 +264,7 @@ describe('bridge', () => {
   it('passes write results back', async () => {
     runApp();
     start();
-    expect(await call('setClass', [0], 'picked', true)).toMatchObject({ ok: true });
+    expect(await call('setClass', [0, 0], 'picked', true)).toMatchObject({ ok: true });
   });
 
   it('stops listening after dispose and after devtools is turned off', async () => {
