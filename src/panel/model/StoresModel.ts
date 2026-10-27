@@ -49,8 +49,10 @@ export class StoresModel {
     changes: {} as Record<number, StoreChange>,
     editing: null as string | null,
     error: '',
+    version: 0,
   });
 
+  private readonly index = new Map<number, { item: StoreItem; position: number }>();
   private readonly reader: Reader;
   private loading = 0;
   private readonly offs: (() => void)[] = [];
@@ -105,8 +107,18 @@ export class StoresModel {
     this.state.showReleased = !this.state.showReleased;
   }
 
+  itemOf(id: number): StoreItem | undefined {
+    void this.state.version;
+    return this.index.get(id)?.item;
+  }
+
+  positionOf(id: number): number {
+    void this.state.version;
+    return this.index.get(id)?.position ?? -1;
+  }
+
   nameOf(id: number): string | null {
-    const item = this.state.stores.find((s) => s.id === id);
+    const item = this.itemOf(id);
     return item === undefined ? null : displayName(item);
   }
 
@@ -116,8 +128,9 @@ export class StoresModel {
       const stores = await this.client.request<StoreItem[]>('getStores');
       if (ticket !== this.loading) return;
       this.state.stores = Array.isArray(stores) ? stores : [];
+      this.reindex();
       const open = this.state.expanded;
-      if (open !== null && this.state.stores.some((s) => s.id === open)) await this.reloadValues(open);
+      if (open !== null && this.index.has(open)) await this.reloadValues(open);
     } catch {}
   }
 
@@ -217,6 +230,13 @@ export class StoresModel {
 
   private schedule() {
     void this.reader.request();
+  }
+
+  private reindex() {
+    this.index.clear();
+    const list = this.state.stores;
+    for (let position = 0; position < list.length; position++) this.index.set(list[position].id, { item: list[position], position });
+    this.state.version++;
   }
 }
 

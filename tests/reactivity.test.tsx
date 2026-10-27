@@ -158,8 +158,8 @@ describe('Reactivity', () => {
 
   it('names the store and path of a trigger', async () => {
     const { emit, root, stores, server } = await render();
-    stores.state.stores = [{ id: 2, name: 'Cart', type: 'reactive', value: {}, holders: [{ kind: 'component', path: [0], type: 'CartView', field: 'cart' }] }];
-    server.stores = stores.state.stores;
+    server.stores = [{ id: 2, name: 'Cart', type: 'reactive', value: {}, holders: [{ kind: 'component', path: [0], type: 'CartView', field: 'cart' }] }];
+    await stores.load();
     const target = { kind: 'object', type: 'Cart', keys: 2 };
     emit(flush(1, 1, { triggers: [{ target, key: 'name', count: 1, store: { id: 2, path: ['user'] } }, { target, key: 'n', count: 1, store: { id: 9, path: [] } }] }));
     await tick();
