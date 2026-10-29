@@ -29,7 +29,10 @@ What you can inspect:
 
 • Home: the MotifJS and contract versions and a summary of the app.
 • Elements: the live component tree with search, props, fields, bindings, classes, attributes, events, services and
-  effects. Select a component in the page or highlight it from the tree.
+  effects. Every root of the app is listed: the page, the page layer and each window the app opens. A component
+  that lives in a popup, a Picture-in-Picture window or an iframe carries that document's name. Select a component
+  in any of these documents or highlight it from the tree. Large trees are read in slices and shown in a virtual
+  list, so the page stays responsive while you look.
 • Reactivity: every flush with the changes that started it and the effects that ran.
 • Performance: JS heap and components outside the tree over time, a timeline of navigations, flushes, builds and
   disposals, and the slowest components, flushes and navigations.
