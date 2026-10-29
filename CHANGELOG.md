@@ -6,7 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-## [0.4.0] - 2026-10-25
+## [0.4.0] - 2026-10-29
 
 ### Added
 
@@ -20,7 +20,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 - The panel follows devtools contract version 2 (paths start with the root's index, `getDocuments()`, `documents:changed`) and still works with a contract 1 core, which it reads as a single-root tree.
 - A root cannot be hidden from Elements; the visibility button is left out for roots.
-- The panel is built with MotifJS 1.2.0-rc.22.
+- The panel is built with MotifJS 1.2.0-rc.23.
 - The bridge queues the app's events while the page works and sends them after the next frame, in messages of up to 500 events. An open panel no longer delays building or leaving a page.
 - Events are sent as `{ kind: 'events', events }` (`BridgeEvents`) instead of one `{ kind: 'event', event }` message (`BridgeEvent`) per event.
 - Elements reads the tree in slices of 500 components, computes its rows in slices and shows them in a virtual list. Opening it on a page with tens of thousands of components no longer blocks the page or the panel.
