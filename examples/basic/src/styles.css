@@ -376,6 +376,15 @@ tbody tr:last-child td {
   border-radius: 8px;
 }
 
+.frame {
+  display: block;
+  width: 100%;
+  height: 140px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
 .rows:empty {
   display: none;
 }
