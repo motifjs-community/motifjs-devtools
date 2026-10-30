@@ -24,9 +24,10 @@
   the tree. Hovering a tree row highlights the component in the page.
 - **Highlight updates.** A button in the header outlines every element a reactivity flush changed: its text, a
   binding, a class, a style, an attribute, a list or a condition. Watches and computeds that change nothing on
-  the page are left out. An element updated again within a second shows how many times (`×3`) and turns from
-  orange to red. The outline fades in 0.6 s, at most 300 are drawn per frame, and it works in every document of
-  the app. It is off by default, the panel remembers the choice, and it keeps running while the panel is hidden.
+  the page are left out. An element updated again less than a second after its last update counts up (`×3`)
+  and turns from orange to red; the count starts over once the element goes a second without an update. The
+  outline fades in 0.6 s, at most 300 are drawn per frame, and it works in every document of the app. It is off
+  by default, the panel remembers the choice, and it keeps running while the panel is hidden.
 - **Reactivity.** Total effect runs, flushes, the last and the slowest flush, live effects, and a timeline of
   the last 200 flushes. A flush opens to the changes that started it and the effects that ran; an effect
   links to its component in Elements. Recording starts when the panel opens and can be paused or cleared.
