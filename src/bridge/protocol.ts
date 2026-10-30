@@ -75,7 +75,7 @@ export const WRITE_METHODS = [
   'setStoreValue',
 ] as const;
 
-export const PAGE_METHODS = ['highlight', 'pick', 'getMemory', 'readTree'] as const;
+export const PAGE_METHODS = ['highlight', 'pick', 'getMemory', 'readTree', 'flashUpdates'] as const;
 
 export type BridgeMethod = (typeof READ_METHODS)[number] | (typeof WRITE_METHODS)[number] | (typeof PAGE_METHODS)[number];
 

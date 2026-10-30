@@ -73,6 +73,16 @@ export class Shell extends Component<HTMLDivElement> {
               onclick={() => m.togglePick()}
               x-html={ICONS.pick}
             ></button>
+            <button
+              type="button"
+              class={() => (m.state.flashing ? 'dt-icon-button active' : 'dt-icon-button')}
+              title="Highlight updates in the page"
+              aria-label="Highlight updates in the page"
+              aria-pressed={() => String(m.state.flashing)}
+              x-display={() => m.state.status.connected}
+              onclick={() => m.toggleFlash()}
+              x-html={ICONS.flash}
+            ></button>
             <div class="dt-dock-group" x-display={() => m.state.dock !== null}>
               {DOCKS.map((dock) => (
                 <button

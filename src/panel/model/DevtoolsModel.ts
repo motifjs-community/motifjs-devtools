@@ -15,6 +15,7 @@ export type Counters = {
 };
 
 const THEME_KEY = 'motif-devtools:theme';
+const FLASH_KEY = 'motif-devtools:flash';
 
 export type ShownSource = (listener: (shown: boolean) => void) => () => void;
 
@@ -31,6 +32,7 @@ export class DevtoolsModel {
     issues: 0,
     dock: null as DockPosition | null,
     picking: false,
+    flashing: readFlash(),
     shown: true,
   });
 
@@ -51,8 +53,10 @@ export class DevtoolsModel {
     this.offs.push(
       client.onStatus((status) => {
         this.state.status = status;
-        if (status.connected) void this.reader.request(true);
-        else this.state.counters = null;
+        if (status.connected) {
+          void this.reader.request(true);
+          if (this.state.flashing) void this.client.request('flashUpdates', true).catch(() => {});
+        } else this.state.counters = null;
       }),
       client.onEvent((event) => {
         if (event.type === 'devtools:pick') this.state.picking = (event.payload as { active?: boolean } | undefined)?.active === true;
@@ -108,6 +112,17 @@ export class DevtoolsModel {
     } catch {}
   }
 
+  async toggleFlash() {
+    const next = !this.state.flashing;
+    this.state.flashing = next;
+    try {
+      localStorage.setItem(FLASH_KEY, String(next));
+    } catch {}
+    try {
+      await this.client.request('flashUpdates', next);
+    } catch {}
+  }
+
   setDock(position: DockPosition) {
     this.client.setDock(position);
   }
@@ -156,4 +171,12 @@ function readTheme(): ThemeChoice {
     if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
   } catch {}
   return 'system';
+}
+
+function readFlash(): boolean {
+  try {
+    return localStorage.getItem(FLASH_KEY) === 'true';
+  } catch {
+    return false;
+  }
 }

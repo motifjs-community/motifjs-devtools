@@ -13,6 +13,7 @@ import {
   type PageMemory,
 } from './protocol';
 import { adaptLegacy } from './legacy';
+import { createFlasher, type Flasher } from './flash';
 import { createOutbox, type Outbox } from './outbox';
 import { createPicker, type Picker } from './picker';
 import { defaultScheduler, type Cancel, type Scheduler } from './schedule';
@@ -127,6 +128,7 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
   let api: Contract | null = null;
   let source: Contract | null = null;
   let picker: Picker | null = null;
+  let flasher: Flasher | null = null;
   let off: (() => void) | null = null;
   let lastStatus = '';
   let disposed = false;
@@ -148,6 +150,12 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
     return picker;
   };
 
+  const flasherOf = () => {
+    if (!withPicker) return null;
+    flasher ??= createFlasher(() => api as never, scheduler);
+    return flasher;
+  };
+
   const check = () => {
     if (disposed) return;
     const found = (host as { __MOTIF_DEVTOOLS__?: unknown }).__MOTIF_DEVTOOLS__;
@@ -158,11 +166,15 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
       off = null;
       picker?.setPicking(false);
       picker?.highlight(null);
+      flasher?.clear();
       source = next;
       api = next === null ? null : next.version === CONTRACT_VERSION ? next : (adaptLegacy(next) as Contract);
       if (api !== null) off = api.on((event) => {
         outbox.event(event.type, event.payload, pageTime());
-        if (event.type === 'documents:changed') picker?.documentsChanged();
+        if (event.type === 'documents:changed') {
+          picker?.documentsChanged();
+          flasher?.documentsChanged();
+        } else if (event.type === 'reactivity:flush') flasher?.flush(event.payload);
       });
     }
     if (api !== null) sendStatus(typeof api.coreVersion === 'string' ? { connected: true, version: api.version, coreVersion: api.coreVersion } : { connected: true, version: api.version });
@@ -236,6 +248,12 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
       check();
       if (request.method === 'getMemory') return reply(request.id, true, readMemory());
       if (request.method === 'readTree') return readTree(request.id);
+      if (request.method === 'flashUpdates') {
+        const own = flasherOf();
+        if (own === null) return reply(request.id, false, 'unknown-method');
+        const [on] = Array.isArray(request.args) ? request.args : [];
+        return reply(request.id, true, own.setEnabled(on === true));
+      }
       if (OWN_METHODS.has(request.method)) {
         const own = pickerOf();
         if (own === null || api === null) return reply(request.id, false, own === null ? 'unknown-method' : 'not-connected');
@@ -263,6 +281,8 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
       outbox.clear();
       picker?.dispose();
       picker = null;
+      flasher?.dispose();
+      flasher = null;
       off?.();
       off = null;
       api = null;

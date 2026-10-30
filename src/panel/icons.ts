@@ -25,6 +25,7 @@ export const ICONS = {
   dockRight: svg('<rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M9.5 2.5v11"/>'),
   popout: svg('<path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5"/><path d="M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3"/>'),
   pick: svg('<path d="M3 2.5 12.5 7 8.3 8.3 7 12.5z"/><path d="m8.5 8.5 4.5 4.5"/>'),
+  flash: svg('<rect x="4" y="4" width="8" height="8" rx="1"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M2.8 2.8l1 1M12.2 12.2l1 1M2.8 13.2l1-1M12.2 3.8l1-1"/>'),
   bolt: svg('<path d="M9 1.5 3.5 9H8l-1 5.5L12.5 7H8z"/>'),
   refresh: svg('<path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2.5v3h-3"/>'),
   filter: svg('<path d="M2 3h12l-4.5 5.5V13l-3-1.5v-3z"/>'),

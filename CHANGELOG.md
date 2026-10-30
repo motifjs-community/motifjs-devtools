@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- Highlight updates: a header button that outlines in the page every element a reactivity flush changed, with a
+  count and a warmer color for elements updated again within a second. It is off by default and remembered by the
+  panel. The `flashUpdates` page method turns it on and off.
+
 ## [0.4.0] - 2026-10-29
 
 ### Added
