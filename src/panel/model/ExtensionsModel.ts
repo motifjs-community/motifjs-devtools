@@ -39,6 +39,10 @@ const entryKey = (source: string, params: Record<string, unknown>) => `${source}
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+// what goes to the page crosses postMessage, and a reactive proxy cannot be cloned; a value read out of the
+// panel's state is a proxy again, so the copy is made right before sending
+const plain = <T>(value: T): T => (value === null || typeof value !== 'object' ? value : (JSON.parse(JSON.stringify(value)) as T));
+
 export class ExtensionsModel {
   readonly state = reactive({
     extensions: [] as ExtensionRecord[],
@@ -111,7 +115,7 @@ export class ExtensionsModel {
       if (param !== null && typeof param === 'object') out[key] = 'state' in param ? panel.values[param.state] : undefined;
       else out[key] = param;
     }
-    return out;
+    return plain(out);
   }
 
   setValue(panel: PanelRecord, key: string, value: unknown) {
@@ -127,7 +131,7 @@ export class ExtensionsModel {
     panel.busy = widget.command;
     panel.notice = null;
     try {
-      const result = await this.client.request<ContractResult>('callExtension', panel.name, panel.id, widget.command, this.resolve(panel, widget.args));
+      const result = await this.client.request<ContractResult>('callExtension', panel.name, panel.id, widget.command, plain(this.resolve(panel, widget.args)));
       if (!result.ok) panel.notice = `${widget.label}: ${result.error}`;
     } catch (error) {
       panel.notice = `${widget.label}: ${message(error)}`;
@@ -266,7 +270,7 @@ export class ExtensionsModel {
       const result =
         entry.source === DESCRIBE_SOURCE
           ? ({ ok: true, value: await this.client.request('readExtension', panel.name) } as ContractResult)
-          : await this.client.request<ContractResult>('readExtensionSource', panel.name, panel.id, entry.source, entry.params);
+          : await this.client.request<ContractResult>('readExtensionSource', panel.name, panel.id, entry.source, plain(entry.params));
       if (ticket !== entry.ticket) return;
       if (result.ok) {
         entry.value = result.value;

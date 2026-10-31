@@ -31,3 +31,8 @@ export function advanceFirstOrder() {
 export function removeLastOrder() {
   orders.list.pop();
 }
+
+export function advanceOrder(id: number) {
+  const order = orders.list.find((o) => o.id === id);
+  if (order && order.status !== 'shipped') order.status = order.status === 'new' ? 'paid' : 'shipped';
+}

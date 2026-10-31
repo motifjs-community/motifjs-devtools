@@ -25,16 +25,34 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 
 const isWidget = (value: unknown): value is Widget => isRecord(value) && typeof value.type === 'string' && value.type !== '';
 
-/** Every node reachable through `children` must be a widget; the bridge already bounded their number. */
+/** Every node reachable through the places a widget holds other widgets must be a widget; the bridge already bounded their number. */
 function checkLayout(value: unknown): string | null {
   if (!isWidget(value)) return 'invalid layout';
-  const children = (value as { children?: unknown }).children;
-  if (children === undefined) return null;
-  if (!Array.isArray(children)) return `invalid children of "${value.type}"`;
-  for (const child of children) {
-    const error = checkLayout(child);
+  const record = value as Record<string, unknown>;
+  for (const key of ['children', 'actions']) {
+    const list = record[key];
+    if (list === undefined) continue;
+    if (!Array.isArray(list)) return `invalid ${key} of "${value.type}"`;
+    for (const child of list) {
+      const error = checkLayout(child);
+      if (error !== null) return error;
+    }
+  }
+  for (const key of ['primary', 'secondary']) {
+    if (record[key] === undefined) continue;
+    const error = checkLayout(record[key]);
     if (error !== null) return error;
   }
+  if (record.tabs !== undefined) {
+    if (!Array.isArray(record.tabs)) return `invalid tabs of "${value.type}"`;
+    for (const tab of record.tabs) {
+      if (!isRecord(tab) || typeof tab.title !== 'string') return 'invalid tab';
+      const error = checkLayout(tab.layout);
+      if (error !== null) return error;
+    }
+  }
+  if (value.type === 'split' && (record.primary === undefined || record.secondary === undefined)) return 'a split needs primary and secondary';
+  if (value.type === 'tabs' && !Array.isArray(record.tabs)) return 'tabs need a list of tabs';
   return null;
 }
 

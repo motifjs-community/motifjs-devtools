@@ -1,86 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { Application } from '@motifx/core';
 import type { BridgeMethod } from '../src/bridge/protocol';
-import { RequestError, type Client, type ClientEvent, type ClientStatus } from '../src/client/client';
-import { DevtoolsModel, type Section } from '../src/panel/model/DevtoolsModel';
+import type { Client } from '../src/client/client';
 import { ExtensionsModel } from '../src/panel/model/ExtensionsModel';
-import { ExtensionPage } from '../src/panel/pages/ExtensionPage';
-import { idleClient, tick } from './helpers';
+import { cleanup, fakeExtensionClient, props, renderPanel, settle, text, type FakeExtension, type FakePage, type Rendered } from './extension-helpers';
 
-type Fake = {
-  panels?: unknown;
-  sources?: Record<string, unknown>;
-  commands?: string[];
-  read?: (panel: string, source: string, params: Record<string, unknown>) => unknown;
-  call?: (panel: string, command: string, args: Record<string, unknown>) => unknown;
-  describe?: unknown;
-  fail?: string;
-};
-
-type Page = { extensions: Record<string, Fake>; oldCore?: boolean };
-
-const settle = async () => {
-  for (let i = 0; i < 8; i++) {
-    await tick();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-};
-
-function fakeClient(page: Page) {
-  const listeners = new Set<(event: ClientEvent) => void>();
-  const statuses = new Set<(status: ClientStatus) => void>();
-  const calls: unknown[][] = [];
-  const client: Client = {
-    status: { connected: true, version: 2 } as ClientStatus,
-    dock: null,
-    async request<T>(method: string, ...args: unknown[]) {
-      calls.push([method, ...args]);
-      const [name, panel, target, extra] = args as [string, string, string, Record<string, unknown>];
-      const extension = page.extensions[name];
-      switch (method) {
-        case 'getExtensions':
-          return Object.keys(page.extensions) as T;
-        case 'readExtensionPanels':
-          if (page.oldCore) throw new RequestError('unknown-method');
-          if (extension === undefined) return { ok: false, error: 'no extension' } as T;
-          if (extension.fail !== undefined) return { ok: false, error: extension.fail } as T;
-          return { ok: true, value: { panels: extension.panels ?? [], sources: extension.sources ?? {}, commands: extension.commands ?? [] } } as T;
-        case 'readExtensionSource':
-          return (extension?.read === undefined ? { ok: false, error: 'no source' } : { ok: true, value: extension.read(panel, target, extra) }) as T;
-        case 'callExtension':
-          try {
-            return { ok: true, value: extension?.call?.(panel, target, extra) } as T;
-          } catch (error) {
-            return { ok: false, error: (error as Error).message } as T;
-          }
-        case 'readExtension':
-          return extension?.describe as T;
-        default:
-          return null as T;
-      }
-    },
-    onEvent(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    onStatus(listener) {
-      statuses.add(listener);
-      return () => statuses.delete(listener);
-    },
-    onDock: () => () => {},
-    ...idleClient,
-    setDock() {},
-    dispose() {},
-  };
-  const emit = (event: ClientEvent) => {
-    for (const listener of listeners) listener(event);
-  };
-  const reads = (source: string) => calls.filter((call) => call[0] === 'readExtensionSource' && call[3] === source).length;
-  const describes = () => calls.filter((call) => call[0] === 'readExtension').length;
-  return { client, emit, calls, reads, describes };
-}
-
-const HISTORY = (): Fake => ({
+const HISTORY = (): FakeExtension => ({
   sources: { rows: { key: 'id', events: { 'row:added': 'refresh' } }, one: {} },
   commands: ['replay', 'explode'],
   panels: [
@@ -110,36 +34,24 @@ const HISTORY = (): Fake => ({
   },
 });
 
-let app: Application | null = null;
+type Page = FakePage;
+
+let shown: Rendered | null = null;
 let model: ExtensionsModel | null = null;
 
 afterEach(async () => {
+  await cleanup(shown);
+  shown = null;
   model?.dispose();
   model = null;
-  await app?.dispose?.();
-  app = null;
-  document.body.innerHTML = '';
 });
 
 async function render(page: Page, section = 'ext:history:list') {
-  const fake = fakeClient(page);
-  const devtools = new DevtoolsModel(fake.client);
-  devtools.state.status = { connected: true, version: 2 };
-  devtools.state.section = section as Section;
-  model = new ExtensionsModel(fake.client, () => devtools.state.section, 0);
-  await model.load();
-  document.body.innerHTML = '<div id="app"></div>';
-  const builder = Application.CreateBuilder();
-  builder.services.addSingleton(DevtoolsModel, { useValue: devtools });
-  builder.services.addSingleton(ExtensionsModel, { useValue: model });
-  app = builder.build();
-  app.run('#app', new ExtensionPage());
-  await settle();
-  return { ...fake, devtools, root: document.querySelector('.dt-extension') as HTMLElement };
+  shown = await renderPanel(page, section);
+  model = shown.model;
+  return shown;
 }
 
-const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-const props = (root: HTMLElement) => [...root.querySelectorAll('.dt-prop-row')].map((row) => `${text(row.querySelector('.dt-prop-key'))} ${text(row.querySelector('.dt-value'))}`);
 const panelOf = (key: string) => model!.state.panels.find((panel) => panel.key === key)!;
 
 describe('extension panels', () => {
@@ -272,7 +184,7 @@ describe('extension panels', () => {
   });
 
   it('counts the packages the bridge left out of the list', async () => {
-    const fake = fakeClient({ extensions: { history: HISTORY() } });
+    const fake = fakeExtensionClient({ extensions: { history: HISTORY() } });
     const request = fake.client.request;
     fake.client.request = (async (method: BridgeMethod, ...args: unknown[]) => (method === 'getExtensions' ? ['history', { $motif: 'truncated', remaining: 3 }] : request(method, ...args))) as Client['request'];
     model = new ExtensionsModel(fake.client, () => '', 0);

@@ -28,6 +28,21 @@ describe('panel metadata', () => {
     ]);
   });
 
+  it('walks into splits, tabs and actions and names what is missing', () => {
+    const layouts: [unknown, string | null][] = [
+      [{ type: 'split', primary: { type: 'text' }, secondary: { type: 'text' } }, null],
+      [{ type: 'split', primary: { type: 'text' } }, 'a split needs primary and secondary'],
+      [{ type: 'split', primary: { type: 'text' }, secondary: { nope: 1 } }, 'invalid layout'],
+      [{ type: 'tabs', tabs: [{ title: 'A', layout: { type: 'text' } }] }, null],
+      [{ type: 'tabs', tabs: [{ layout: { type: 'text' } }] }, 'invalid tab'],
+      [{ type: 'tabs' }, 'tabs need a list of tabs'],
+      [{ type: 'detail', source: 'one', sections: [], actions: [{ type: 'button', label: 'x', command: 'c' }] }, null],
+      [{ type: 'detail', source: 'one', sections: [], actions: 'no' }, 'invalid actions of "detail"'],
+      [{ type: 'stack', children: [{ type: 'split', primary: { type: 'stack', children: [7] }, secondary: { type: 'text' } }] }, 'invalid layout'],
+    ];
+    for (const [layout, error] of layouts) expect(parseExtension(wire([{ id: 'p', title: 'P', layout }])).panels[0].error, JSON.stringify(layout)).toBe(error);
+  });
+
   it('keeps only the routes that are whole', () => {
     const [panel] = parseExtension(wire([{ id: 'a', title: 'A', layout: { type: 'text' }, routes: [{ id: 'item', title: { field: 'name' }, source: 'one', params: { id: { param: 'id' } }, layout: { type: 'json', source: 'one' } }, { id: 'broken' }, { id: 'Bad', layout: { type: 'text' } }] }])).panels;
     expect(panel.routes).toEqual([{ id: 'item', title: { field: 'name' }, source: 'one', params: { id: { param: 'id' } }, layout: { type: 'json', source: 'one' } }]);

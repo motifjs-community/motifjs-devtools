@@ -35,7 +35,7 @@ class WidgetHost extends Component<HTMLDivElement> {
   private show(panel: PanelRecord | null) {
     this.controls.clear();
     if (panel === null || panel.layout === null) return;
-    this.controls.add(buildWidget(panel.layout, { panel, model: this.model }));
+    this.controls.add(buildWidget(panel.layout, { panel, model: this.model, build: buildWidget }));
   }
 }
 
