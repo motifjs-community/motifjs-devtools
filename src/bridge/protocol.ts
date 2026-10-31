@@ -42,6 +42,12 @@ export type DocumentRecord = { index: number; title: string; name: string; url: 
 
 export const TREE_FLAGS = { built: 1, visible: 2, waiting: 4, disposed: 8, connected: 16 } as const;
 
+export type ContractResult<T = unknown> = { ok: true; value: T } | { ok: false; error: string };
+
+export type ExtensionSourceSettings = { key?: string; events?: Record<string, 'upsert' | 'append' | 'remove' | 'refresh'>; max?: number };
+
+export type ExtensionPanels = { panels: unknown[]; sources: Record<string, ExtensionSourceSettings>; commands: string[] };
+
 export type BridgeMessage = BridgeHello | BridgeDock | BridgeRequest | BridgeResponse | BridgeStatus | BridgeEvents | BridgeChunk | BridgeCancel | BridgeVisibility;
 
 export const READ_METHODS = [
@@ -60,6 +66,8 @@ export const READ_METHODS = [
   'getStores',
   'getExtensions',
   'readExtension',
+  'readExtensionPanels',
+  'readExtensionSource',
   'readValue',
   'readStore',
   'readService',
@@ -73,9 +81,13 @@ export const WRITE_METHODS = [
   'setProp',
   'navigate',
   'setStoreValue',
+  'callExtension',
 ] as const;
 
 export const PAGE_METHODS = ['highlight', 'pick', 'getMemory', 'readTree', 'flashUpdates'] as const;
+
+// Methods that run a package's own code: the page answers within its limit, the panel waits longer for them.
+export const SLOW_METHODS = ['readExtensionSource', 'callExtension'] as const;
 
 export type BridgeMethod = (typeof READ_METHODS)[number] | (typeof WRITE_METHODS)[number] | (typeof PAGE_METHODS)[number];
 

@@ -8,6 +8,7 @@ import { StoresModel } from './model/StoresModel';
 import { ServicesModel } from './model/ServicesModel';
 import { HomeModel } from './model/HomeModel';
 import { PerformanceModel } from './model/PerformanceModel';
+import { ExtensionsModel } from './model/ExtensionsModel';
 import { Shell } from './Shell';
 import './styles/panel.css';
 import './styles/elements.css';
@@ -18,6 +19,7 @@ import './styles/stores.css';
 import './styles/services.css';
 import './styles/home.css';
 import './styles/performance.css';
+import './styles/extensions.css';
 
 export type PanelOptions = { systemTheme?: () => 'light' | 'dark' | null; shown?: ShownSource };
 
@@ -32,12 +34,13 @@ export function startPanel(port: Port, options: PanelOptions = {}) {
   const services = new ServicesModel(client, () => model.state.section === 'services', undefined, undefined, shown);
   const performance = new PerformanceModel(client, () => model.state.counters, undefined, undefined, shown);
   const home = new HomeModel(client, () => model.state.section === 'home', undefined, shown);
+  const extensions = new ExtensionsModel(client, () => model.state.section, undefined, shown);
 
   effect(() => {
     if (!model.state.shown) return;
     void model.state.section;
     queueMicrotask(() => {
-      for (const reader of [router, logs, stores, services, home]) reader.wake();
+      for (const reader of [router, logs, stores, services, home, extensions]) reader.wake();
     });
   });
 
@@ -69,6 +72,7 @@ export function startPanel(port: Port, options: PanelOptions = {}) {
   builder.services.addSingleton(ServicesModel, { useValue: services });
   builder.services.addSingleton(HomeModel, { useValue: home });
   builder.services.addSingleton(PerformanceModel, { useValue: performance });
+  builder.services.addSingleton(ExtensionsModel, { useValue: extensions });
   builder.build().run('#app', new Shell());
   return client;
 }

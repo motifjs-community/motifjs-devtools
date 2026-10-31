@@ -1,0 +1,172 @@
+.dt-ext-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dt-w-hidden {
+  display: none !important;
+}
+
+.dt-w-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dt-w-stack.row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.dt-w-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--dt-border);
+  border-radius: 8px;
+  background: var(--dt-bg-raised);
+}
+
+.dt-w-title {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--dt-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dt-w-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dt-w-text .dt-w-value {
+  overflow-wrap: anywhere;
+}
+
+.dt-w-counter {
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  padding: 10px 14px;
+  border: 1px solid var(--dt-border);
+  border-radius: 8px;
+  background: var(--dt-bg-raised);
+}
+
+.dt-w-count {
+  font-size: 22px;
+  line-height: 1.2;
+  color: var(--dt-text-strong);
+}
+
+.dt-w-counter .dt-w-label {
+  color: var(--dt-muted);
+}
+
+.dt-w-json {
+  padding: 6px 0;
+  border: 1px solid var(--dt-border);
+  border-radius: 8px;
+  background: var(--dt-bg);
+}
+
+.dt-w-json .dt-w-title {
+  padding: 4px 12px 0;
+}
+
+.dt-w-empty {
+  padding: 6px 12px;
+}
+
+.dt-w-unknown {
+  padding: 10px 14px;
+  border: 1px dashed var(--dt-border);
+  border-radius: 8px;
+  color: var(--dt-muted);
+}
+
+.dt-w-error {
+  color: var(--dt-danger);
+  font-size: 12px;
+}
+
+.dt-w-button .dt-button.busy {
+  opacity: 0.6;
+}
+
+.tone-accent,
+.tone-info {
+  color: var(--dt-accent);
+}
+
+.tone-success {
+  color: var(--dt-ok);
+}
+
+.tone-warning {
+  color: var(--dt-warn);
+}
+
+.tone-danger {
+  color: var(--dt-danger);
+}
+
+.tone-muted {
+  color: var(--dt-muted);
+}
+
+.dt-w-counter.tone-accent .dt-w-count,
+.dt-w-counter.tone-info .dt-w-count,
+.dt-w-counter.tone-success .dt-w-count,
+.dt-w-counter.tone-warning .dt-w-count,
+.dt-w-counter.tone-danger .dt-w-count {
+  color: inherit;
+}
+
+.dt-ext-writes {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dt-warn);
+  font-size: 12px;
+}
+
+.dt-ext-writes svg {
+  width: 14px;
+  height: 14px;
+}
+
+.dt-ext-notice {
+  padding: 8px 12px;
+  border-left: 3px solid var(--dt-danger);
+  border-radius: 6px;
+  background: var(--dt-bg-raised);
+  color: var(--dt-text);
+}
+
+.dt-nav-mark {
+  display: inline-flex;
+  margin-left: auto;
+  color: var(--dt-muted);
+}
+
+.dt-nav-mark svg {
+  width: 12px;
+  height: 12px;
+}
+
+.dt-nav-mark.broken {
+  color: var(--dt-danger);
+}
+
+.dt-nav-overflow {
+  margin: 4px 16px 8px;
+  font-size: 12px;
+}

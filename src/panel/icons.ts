@@ -31,4 +31,15 @@ export const ICONS = {
   filter: svg('<path d="M2 3h12l-4.5 5.5V13l-3-1.5v-3z"/>'),
   warning: svg('<path d="M8 2 14.5 13.5h-13z"/><path d="M8 6.5v3"/><path d="M8 11.6v.1"/>'),
   chevron: svg('<path d="m6 3.5 4.5 4.5L6 12.5"/>'),
+  puzzle: svg('<path d="M6 2.5h3v1.5a1.5 1.5 0 1 0 3 0V2.5h1.5v4h-1.5a1.5 1.5 0 1 0 0 3h1.5v4H10v-1.5a1.5 1.5 0 1 0-3 0v1.5H2.5v-4H4a1.5 1.5 0 1 0 0-3H2.5v-4H6z"/>'),
+  pen: svg('<path d="m10.5 2.5 3 3-8 8H2.5v-3z"/><path d="m9 4 3 3"/>'),
+  play: svg('<path d="M4.5 2.5 13 8l-8.5 5.5z"/>'),
+  trash: svg('<path d="M2.5 4h11M5.5 4V2.5h5V4"/><path d="M4 4l.7 9.5h6.6L12 4"/>'),
+  timeline: svg('<path d="M2 4h5M9 4h5M2 8h9M2 12h3M7 12h7"/>'),
+  list: svg('<path d="M5 4h9M5 8h9M5 12h9"/><path d="M2 4h.01M2 8h.01M2 12h.01"/>'),
+  chart: svg('<path d="M2.5 13.5h11"/><path d="M4 11V7M7 11V4M10 11V8.5M13 11V5.5"/>'),
 } as const;
+
+export type IconName = keyof typeof ICONS;
+
+export const iconOf = (name: string, fallback: IconName = 'puzzle') => (name in ICONS ? ICONS[name as IconName] : ICONS[fallback]);

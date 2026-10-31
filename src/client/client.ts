@@ -1,4 +1,6 @@
-import { CHANNEL, type BridgeMessage, type BridgeMethod, type BridgeStatus, type DockPosition } from '../bridge/protocol';
+import { CHANNEL, SLOW_METHODS, type BridgeMessage, type BridgeMethod, type BridgeStatus, type DockPosition } from '../bridge/protocol';
+
+const SLOW = new Set<string>(SLOW_METHODS);
 
 export interface Port {
   post(message: BridgeMessage): void;
@@ -34,7 +36,7 @@ export class RequestError extends Error {
   }
 }
 
-export function createClient(port: Port, timeout = 5000): Client {
+export function createClient(port: Port, timeout = 5000, slowTimeout = 15000): Client {
   let nextId = 1;
   let status: ClientStatus = { connected: false, version: null };
   let dock: DockPosition | null = null;
@@ -45,13 +47,13 @@ export function createClient(port: Port, timeout = 5000): Client {
   const dockListeners = new Set<(position: DockPosition) => void>();
   const shownListeners = new Set<(shown: boolean) => void>();
 
-  const expire = (id: number) =>
+  const expire = (id: number, after = timeout) =>
     setTimeout(() => {
       const entry = pending.get(id);
       if (entry === undefined) return;
       pending.delete(id);
       entry.reject(new RequestError('timeout'));
-    }, timeout);
+    }, after);
 
   const dispatch = (event: ClientEvent) => {
     for (const listener of eventListeners) {
@@ -108,7 +110,7 @@ export function createClient(port: Port, timeout = 5000): Client {
     request<T>(method: BridgeMethod, ...args: unknown[]) {
       const id = nextId++;
       return new Promise<T>((resolve, reject) => {
-        pending.set(id, { resolve: resolve as (value: unknown) => void, reject, timer: expire(id) });
+        pending.set(id, { resolve: resolve as (value: unknown) => void, reject, timer: expire(id, SLOW.has(method) ? slowTimeout : timeout) });
         port.post({ channel: CHANNEL, kind: 'request', id, method, args });
       });
     },

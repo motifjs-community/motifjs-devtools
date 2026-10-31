@@ -6,3 +6,4 @@ export * from './bridge/protocol';
 export { toTransfer, MARK } from './bridge/serialize';
 export { createClient, RequestError } from './client/client';
 export type { Client, ClientEvent, ClientStatus, Port } from './client/client';
+export type { PanelMetadata, PanelCapabilities, PanelRoute, Widget, StackWidget, ToolbarWidget, TextWidget, CounterWidget, JsonWidget, ButtonWidget, Param, Params, Tone, Format } from './panel/schema';

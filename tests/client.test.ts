@@ -78,6 +78,29 @@ describe('client', () => {
     }
   });
 
+  it('waits longer for a call that runs a package\'s code than for an ordinary read', async () => {
+    vi.useFakeTimers();
+    try {
+      const { port, sent, deliver } = fakePort();
+      const client = createClient(port, 100, 400);
+      const outcome = (promise: Promise<unknown>) => promise.then(() => 'answered', (error: Error) => error.message);
+      const read = outcome(client.request('getCounters'));
+      const command = outcome(client.request('callExtension', 'history', 'list', 'replay', { id: 1 }));
+      const source = client.request('readExtensionSource', 'history', 'list', 'rows', {});
+      const sourceOutcome = outcome(source);
+      vi.advanceTimersByTime(100);
+      expect(await read).toBe('timeout');
+      vi.advanceTimersByTime(250);
+      const sourceId = (sent.filter((m) => m.kind === 'request').at(-1) as { id: number }).id;
+      deliver({ channel: CHANNEL, kind: 'response', id: sourceId, ok: true, value: { ok: true, value: [] } });
+      expect(await sourceOutcome).toBe('answered');
+      vi.advanceTimersByTime(50);
+      expect(await command).toBe('timeout');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('reports when the page hides or shows the panel', () => {
     const { port, deliver } = fakePort();
     const client = createClient(port);

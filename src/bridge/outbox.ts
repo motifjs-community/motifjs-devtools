@@ -13,7 +13,8 @@ type Entry = { type: string; payload: unknown; time: number; deferred: boolean }
 
 export interface Outbox {
   readonly size: number;
-  event(type: string, payload: unknown, time: number): void;
+  /** `ready` says the payload is plain data already and must not be copied again. */
+  event(type: string, payload: unknown, time: number, ready?: boolean): void;
   message(message: BridgeMessage): void;
   clear(): void;
 }
@@ -78,9 +79,9 @@ export function createOutbox(send: (message: BridgeMessage) => void, scheduler: 
     get size() {
       return queue.length;
     },
-    event(type, payload, time) {
-      const deferred = DEFERRED.has(type);
-      push({ type, payload: deferred ? payload : toTransfer(payload, depthOf(type)), time, deferred });
+    event(type, payload, time, ready = false) {
+      const deferred = !ready && DEFERRED.has(type);
+      push({ type, payload: deferred || ready ? payload : toTransfer(payload, depthOf(type)), time, deferred });
     },
     message(message) {
       if (!busy) send(message);

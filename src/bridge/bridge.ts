@@ -4,6 +4,7 @@ import {
   SUPPORTED_VERSIONS,
   PAGE_METHODS,
   READ_METHODS,
+  SLOW_METHODS,
   WRITE_METHODS,
   isBridgeMessage,
   type BridgeMessage,
@@ -13,6 +14,7 @@ import {
   type PageMemory,
 } from './protocol';
 import { adaptLegacy } from './legacy';
+import { boundedEvent, createCallGate, createEventGate, extensionOf, extensionsShape, panelsShape, sourceShape, withTimeout } from './extensions';
 import { createFlasher, type Flasher } from './flash';
 import { createOutbox, type Outbox } from './outbox';
 import { createPicker, type Picker } from './picker';
@@ -44,7 +46,8 @@ export interface Bridge {
 
 const METHODS = new Set<string>([...READ_METHODS, ...WRITE_METHODS]);
 const OWN_METHODS = new Set<string>(PAGE_METHODS);
-const DEPTH: Record<string, number> = { inspect: 6, readExtension: 6, getWarnings: 6, getErrors: 8, getScopes: 6, readValue: 6, readStore: 6, readService: 6 };
+const DEPTH: Record<string, number> = { inspect: 6, readExtension: 6, getWarnings: 6, getErrors: 8, getScopes: 6, readValue: 6, readStore: 6, readService: 6, callExtension: 6 };
+const SLOW = new Set<string>(SLOW_METHODS);
 
 type StoreRecord = { id: unknown; name: unknown; file?: unknown; type: unknown; value: unknown; stale?: unknown; released?: unknown; holders: unknown };
 
@@ -110,6 +113,9 @@ const SHAPES: Record<string, (value: unknown, api: Contract) => unknown> = {
   getTree: treeShape,
   getDocuments: (value, api) => (Array.isArray(value) ? value.map((doc, index) => documentRecord(doc, index, api)) : []),
   getRoutes: routeShape,
+  getExtensions: extensionsShape,
+  readExtensionPanels: panelsShape,
+  readExtensionSource: sourceShape,
   getStores: (value) =>
     Array.isArray(value)
       ? value.map((store: StoreRecord) => {
@@ -125,6 +131,8 @@ const SHAPES: Record<string, (value: unknown, api: Contract) => unknown> = {
 export function createBridge({ send, host = globalThis, interval = 250, picker: withPicker = typeof document !== 'undefined', scheduler = defaultScheduler() }: BridgeOptions): Bridge {
   const outbox: Outbox = createOutbox(send, scheduler);
   const streams = new Map<number, Cancel>();
+  const calls = createCallGate();
+  const events = createEventGate((name, count) => outbox.event('devtools:ext-dropped', { name, count }, pageTime(), true));
   let api: Contract | null = null;
   let source: Contract | null = null;
   let picker: Picker | null = null;
@@ -169,7 +177,14 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
       flasher?.clear();
       source = next;
       api = next === null ? null : next.version === CONTRACT_VERSION ? next : (adaptLegacy(next) as Contract);
+      events.clear();
       if (api !== null) off = api.on((event) => {
+        const name = extensionOf(event.type);
+        if (name !== null) {
+          const now = pageTime();
+          if (events.allow(name, now)) outbox.event(event.type, boundedEvent(event.payload), now, true);
+          return;
+        }
         outbox.event(event.type, event.payload, pageTime());
         if (event.type === 'documents:changed') {
           picker?.documentsChanged();
@@ -265,12 +280,19 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
       if (api === null) return reply(request.id, false, 'not-connected');
       const method = api[request.method];
       if (typeof method !== 'function') return reply(request.id, false, 'unknown-method');
+      const args = Array.isArray(request.args) ? request.args : [];
+      const slow = SLOW.has(request.method);
+      const owner = slow && typeof args[0] === 'string' ? args[0] : null;
+      if (owner !== null && !calls.enter(owner)) return reply(request.id, true, { ok: false, error: 'busy' });
       try {
-        const value = await method.apply(api, Array.isArray(request.args) ? request.args : []);
+        const work = method.apply(api, args);
+        const value = slow ? await withTimeout(Promise.resolve(work), scheduler.timer) : await work;
         const shape = SHAPES[request.method];
         reply(request.id, true, shape !== undefined ? shape(value, api) : toTransfer(value, DEPTH[request.method] ?? 4));
       } catch (error) {
         reply(request.id, false, error instanceof Error ? error.message : error);
+      } finally {
+        if (owner !== null) calls.leave(owner);
       }
     },
     dispose() {

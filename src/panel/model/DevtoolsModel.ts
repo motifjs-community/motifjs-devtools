@@ -3,7 +3,9 @@ import type { DockPosition } from '../../bridge/protocol';
 import type { Client, ClientStatus } from '../../client/client';
 import { Reader } from './reader';
 
-export type Section = 'home' | 'elements' | 'reactivity' | 'performance' | 'router' | 'stores' | 'services' | 'logs';
+export type BuiltinSection = 'home' | 'elements' | 'reactivity' | 'performance' | 'router' | 'stores' | 'services' | 'logs';
+/** A built-in section, or the panel of a package as `ext:<package>:<panel>`. */
+export type Section = BuiltinSection | `ext:${string}`;
 export type ThemeChoice = 'system' | 'light' | 'dark';
 
 export type Counters = {

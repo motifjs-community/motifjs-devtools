@@ -10,6 +10,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { ApiClient, CartService, DialogState, OrderDraft, PriceFormatter, ThemeService } from './services';
 import { session } from './stores';
 import { toast } from './toasts';
+import './devtools-orders';
 import './styles.css';
 
 const routes: RouteItem[] = [

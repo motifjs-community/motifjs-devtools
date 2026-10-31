@@ -73,8 +73,9 @@ export class Dashboard extends Component<HTMLElement> {
           </tbody>
         </table>
         <Hint
-          screens="Stores, Reactivity, Elements, Performance"
+          screens="Orders, Stores, Reactivity, Elements, Performance"
           points={[
+            'Orders: a panel the app registers itself (src/devtools-orders.ts). Its counters and value tree read the store, its buttons run the same commands as this page, and it follows every change made here.',
             'Stores: "orders" and "revenue" are listed with their file, src/stores.ts. "Advance first open order" changes a field you can watch there.',
             'Reactivity: every button above is one flush. Its triggers name the store and field that changed, such as orders.list.',
             'Elements: the table body holds a List with its ListItems; each OrderRow is a function component.',
