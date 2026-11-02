@@ -7,9 +7,6 @@ import { addOrder, advanceFirstOrder, advanceOrder, orders, removeLastOrder, rev
 // filters, a chart and the commands the Dashboard has too.
 const refresh = ['orders', 'summary', 'order'];
 
-type Change = { at: number; what: string; count: number; took: number };
-const activity: Change[] = [];
-
 const panel: PanelMetadata = {
   id: 'orders',
   title: 'Orders',
@@ -76,23 +73,12 @@ const panel: PanelMetadata = {
             },
           },
           { title: 'Chart', layout: { type: 'chart', kind: 'bar', source: 'orders', itemX: 'id', series: 'total', format: 'number', label: 'Total per order', tone: 'accent' } },
-          {
-            title: 'Activity',
-            layout: {
-              type: 'stack',
-              children: [
-                { type: 'timeline', title: 'Changes', source: 'activity', itemTime: 'at', itemDuration: 'took', itemTitle: 'what', itemLane: 'what', select: 'change', window: 60_000 },
-                { type: 'log', title: 'Log', source: 'activity', itemTime: 'at', itemTitle: 'what', itemLevel: 'count', height: 160 },
-              ],
-            },
-          },
           { title: 'Raw', layout: { type: 'code', source: 'orders', language: 'json', title: 'orders.list' } },
         ],
       },
       { type: 'text', title: 'Newest customer', source: 'summary', field: 'newest', empty: 'No orders' },
     ],
   },
-  lanes: [{ id: 'changes', label: 'Order changes', tone: 'warning', event: 'changed', itemDuration: 'took', itemTitle: 'what' }],
 };
 
 const devtools = registerDevtools('orders', {
@@ -107,7 +93,6 @@ const devtools = registerDevtools('orders', {
       events: { changed: 'refresh' },
     },
     summary: { read: () => ({ count: orders.list.length, revenue: revenue.value, newest: orders.list.at(-1)?.customer ?? null }), events: { changed: 'refresh' } },
-    activity: { read: () => activity, events: { changed: 'append' }, max: 200 },
   },
   commands: {
     add: () => addOrder(),
@@ -120,17 +105,8 @@ const devtools = registerDevtools('orders', {
   panels: [panel],
 });
 
-// The Dashboard changes the orders too; the panel learns of it like of any other change. Each change is one
-// line of the activity the panel shows in time, and one mark on the Performance timeline.
-let previous = -1;
+// The Dashboard changes the orders too; the panel learns of it like of any other change.
 effect(() => {
-  const count = orders.list.length;
-  const statuses = orders.list.map((order) => order.status).join();
-  void statuses;
-  const what = previous < 0 ? 'orders loaded' : count > previous ? 'order added' : count < previous ? 'order removed' : 'order advanced';
-  previous = count;
-  const change: Change = { at: Date.now(), what, count, took: 0 };
-  activity.push(change);
-  if (activity.length > 200) activity.shift();
-  devtools.emit('changed', change);
+  for (const order of orders.list) void order.status, void order.total;
+  devtools.emit('changed', { count: orders.list.length });
 });

@@ -9,9 +9,9 @@ type Row = { key: string; id: unknown; data: unknown };
 
 export const columnsTemplate = (columns: readonly Column[]) => columns.map((column) => (typeof column.width === 'number' ? `${column.width}px` : 'minmax(0, 1fr)')).join(' ');
 
-function TableRow(props: { row: Row; columns: Column[]; selected: () => boolean; select: () => void }) {
+function TableRow(props: { row: Row; columns: Column[]; selected: () => boolean; select: () => void; open: () => void }) {
   return (
-    <div class={() => (props.selected() ? 'dt-trow selected' : 'dt-trow')} role="row" onclick={() => props.select()}>
+    <div class={() => (props.selected() ? 'dt-trow selected' : 'dt-trow')} role="row" onclick={() => props.select()} ondblclick={() => props.open()}>
       {props.columns.map((column, index) => {
         const text = formatText(fieldOf(props.row.data, column.field), column.format);
         return (
@@ -36,12 +36,13 @@ class TableView extends ReadingView<TableWidget> {
       const rows = this.rows();
       return { items: rows, totalCount: rows.length, hasMore: false };
     },
-    itemTemplate: (row) => <TableRow row={row} columns={this.widget.columns} selected={() => this.isSelected(row)} select={() => this.select(row)} />,
+    itemTemplate: (row) => <TableRow row={row} columns={this.widget.columns} selected={() => this.isSelected(row)} select={() => this.select(row)} open={() => this.open(row)} />,
   });
 
   override onConfigured() {
     this.class.add('dt-w');
     this.class.add('dt-w-table');
+    if (this.widget.open !== undefined) this.class.add('openable');
     this.sort.field = this.widget.sort?.field ?? null;
     this.sort.dir = this.widget.sort?.dir ?? 'asc';
     this.element.style.setProperty('--dt-cols', columnsTemplate(this.widget.columns));
@@ -89,6 +90,10 @@ class TableView extends ReadingView<TableWidget> {
 
   select(row: Row) {
     if (this.widget.select !== undefined) this.scope.model.setValue(this.scope.panel, this.widget.select, this.isSelected(row) ? undefined : row.id);
+  }
+
+  open(row: Row) {
+    if (this.widget.open !== undefined) this.scope.model.open(this.scope.panel, this.widget.open, row.data);
   }
 
   sortBy(field: string) {

@@ -1,4 +1,5 @@
 import { Component, FromService } from '@motifx/core';
+import { runAction } from '../actions';
 import { Hint, PageHead } from '../layout';
 import { CartService, PriceFormatter, type CartItem } from '../services';
 import { toast } from '../toasts';
@@ -20,11 +21,11 @@ function CartLine(props: { item: CartItem }) {
       <td>{() => format(item.price)}</td>
       <td>
         <div class="stepper">
-          <button type="button" onclick={() => cart.change(item.id, -1)}>
+          <button type="button" onclick={() => runAction('cart/change', () => cart.change(item.id, -1))}>
             −
           </button>
           <b>{() => String(item.qty)}</b>
-          <button type="button" onclick={() => cart.change(item.id, 1)}>
+          <button type="button" onclick={() => runAction('cart/change', () => cart.change(item.id, 1))}>
             +
           </button>
         </div>
@@ -40,8 +41,11 @@ export class CartPage extends Component<HTMLElement> {
   prices = FromService(PriceFormatter)!;
 
   add(name: string, price: number) {
-    this.cart.add(name, price);
-    toast(`${name} added to the cart`);
+    // the toast is an action of its own inside this one
+    runAction('cart/add', () => {
+      this.cart.add(name, price);
+      runAction('toast/show', () => toast(`${name} added to the cart`));
+    });
   }
 
   override view() {
@@ -75,8 +79,9 @@ export class CartPage extends Component<HTMLElement> {
         {cart.state.items.length === 0 && <p class="muted">The cart is empty. Add something above.</p>}
         <p class="total">{() => `Total ${format(cart.total.value)} · ${cart.count.value} items`}</p>
         <Hint
-          screens="Services, Stores, Elements"
+          screens="Services, Stores, Elements, Actions"
           points={[
+            'Actions: "Add Coffee" is one action with the toast as a nested action inside it. Open it to see both, and the writes to CartService.state.',
             'Services: the root scope holds CartService. Open it to see state.items, total and count; they change as you click.',
             'Stores: CartService.state is a reactive store, CartService.total and CartService.count are computeds. Edit a quantity there and the page follows.',
             'Elements: the empty message is a When condition; it is built when the cart empties and disposed when you add again.',

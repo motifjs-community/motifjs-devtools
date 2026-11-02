@@ -8,10 +8,10 @@ type Node = { key: string; id: unknown; depth: number; data: unknown; title: str
 // a zero or an empty value is no badge
 const badgeOf = (value: unknown) => (value === undefined || value === null || value === 0 || value === '' || value === false ? '' : formatText(value, undefined));
 
-function TreeRow(props: { node: Node; open: () => boolean; selected: () => boolean; toggle: () => void; select: () => void }) {
+function TreeRow(props: { node: Node; open: () => boolean; selected: () => boolean; toggle: () => void; select: () => void; openRoute: () => void }) {
   const { node } = props;
   return (
-    <div class={() => (props.selected() ? 'dt-row selected' : 'dt-row')} style={`--depth: ${node.depth}`} role="treeitem" onclick={() => props.select()}>
+    <div class={() => (props.selected() ? 'dt-row selected' : 'dt-row')} style={`--depth: ${node.depth}`} role="treeitem" onclick={() => props.select()} ondblclick={() => props.openRoute()}>
       <button
         type="button"
         class={() => (node.children > 0 ? (props.open() ? 'dt-caret open' : 'dt-caret') : 'dt-caret leaf')}
@@ -41,12 +41,13 @@ class TreeView extends ReadingView<TreeWidget> {
       const nodes = this.nodes();
       return { items: nodes, totalCount: nodes.length, hasMore: false };
     },
-    itemTemplate: (node) => <TreeRow node={node} open={() => this.open.keys[node.key] === true} selected={() => this.isSelected(node)} toggle={() => this.toggle(node)} select={() => this.select(node)} />,
+    itemTemplate: (node) => <TreeRow node={node} open={() => this.open.keys[node.key] === true} selected={() => this.isSelected(node)} toggle={() => this.toggle(node)} select={() => this.select(node)} openRoute={() => this.openRoute(node)} />,
   });
 
   override onConfigured() {
     this.class.add('dt-w');
     this.class.add('dt-w-tree');
+    if (this.widget.open !== undefined) this.class.add('openable');
     this.element.style.setProperty('--dt-list-height', `${this.widget.height ?? LIST_HEIGHT}px`);
   }
 
@@ -114,6 +115,10 @@ class TreeView extends ReadingView<TreeWidget> {
 
   select(node: Node) {
     if (this.widget.select !== undefined) this.scope.model.setValue(this.scope.panel, this.widget.select, this.isSelected(node) ? undefined : node.id);
+  }
+
+  openRoute(node: Node) {
+    if (this.widget.open !== undefined) this.scope.model.open(this.scope.panel, this.widget.open, node.data);
   }
 
   emptyText = () => (this.error() !== '' ? this.error() : this.loading() ? 'Loading…' : (this.widget.empty ?? 'Nothing to show'));

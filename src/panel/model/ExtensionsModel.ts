@@ -1,8 +1,9 @@
-import { reactive } from '@motifx/core';
+import { effect, reactive, untracked } from '@motifx/core';
 import type { ContractResult, ExtensionPanels, ExtensionSourceSettings } from '../../bridge/protocol';
 import { MARK } from '../../bridge/serialize';
 import type { Client, ClientEvent } from '../../client/client';
-import type { ButtonWidget, Params, PanelRoute, PerformanceLane, Widget } from '../schema';
+import type { ButtonWidget, OpenRoute, Params, PanelRoute, PerformanceLane, RowParam, Widget } from '../schema';
+import { fieldOf } from '../values';
 import { DESCRIBE_SOURCE, describePanel, parseExtension, type ParsedPanel } from './panels';
 import { changeRows, trimRows, type RowAction } from './rows';
 import { READ_GAP, Reader } from './reader';
@@ -10,6 +11,12 @@ import { READ_GAP, Reader } from './reader';
 export type SourceStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export type SourceEntry = { key: string; source: string; params: Record<string, unknown>; status: SourceStatus; value: unknown; error: string | null; stale: boolean; ticket: number };
+
+/** The route a panel shows instead of its layout, with the parameters its widgets read as `{ param }`. */
+export type RouteState = { id: string; params: Record<string, unknown> };
+
+/** What a package's `reveal()` points at: a panel, a route of it with parameters, and values for the panel's state. */
+export type RevealTarget = { panel: string; route?: string; params?: Record<string, unknown>; state?: Record<string, unknown> };
 
 export type PanelRecord = {
   key: string;
@@ -25,6 +32,10 @@ export type PanelRecord = {
   error: string | null;
   /** The panel's own state: selections and filters the widgets write and read. Kept while the panel exists. */
   values: Record<string, unknown>;
+  /** The open route, or none for the panel's own layout. */
+  route: RouteState | null;
+  /** A reveal of the package that waits for the user to open this panel; the sidebar marks it. */
+  pending: RevealTarget | null;
   entries: SourceEntry[];
   notice: string | null;
   busy: string | null;
@@ -53,6 +64,23 @@ const message = (error: unknown) => (error instanceof Error ? error.message : St
 // panel's state is a proxy again, so the copy is made right before sending
 const plain = <T>(value: T): T => (value === null || typeof value !== 'object' ? value : (JSON.parse(JSON.stringify(value)) as T));
 
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isTarget = (value: unknown): value is RevealTarget =>
+  isRecord(value) &&
+  typeof value.panel === 'string' &&
+  (value.route === undefined || typeof value.route === 'string') &&
+  (value.params === undefined || isRecord(value.params)) &&
+  (value.state === undefined || isRecord(value.state));
+
+/** Whether the user is writing somewhere in the panel; a reveal then waits instead of moving them. */
+const typing = () => {
+  if (typeof document === 'undefined') return false;
+  const active = document.activeElement as HTMLElement | null;
+  if (active === null) return false;
+  return active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable === true;
+};
+
 export class ExtensionsModel {
   readonly state = reactive({
     extensions: [] as ExtensionRecord[],
@@ -64,6 +92,8 @@ export class ExtensionsModel {
   private loading = 0;
   private readonly reader: Reader;
   private readonly readers = new Map<string, Reader>();
+  /** Reveals that came before their panel was listed, by panel key. */
+  private readonly waiting = new Map<string, RevealTarget>();
   private readonly offs: (() => void)[] = [];
 
   constructor(
@@ -71,6 +101,8 @@ export class ExtensionsModel {
     private readonly section: () => string = () => '',
     private readonly delay = READ_GAP,
     private readonly shown: () => boolean = () => true,
+    /** Opens a section of the panel app; a reveal uses it when it may move the user. */
+    private readonly go: ((section: string) => void) | null = null,
   ) {
     this.reader = new Reader(() => this.load(), this.shown, this.delay);
     this.offs.push(
@@ -79,6 +111,14 @@ export class ExtensionsModel {
         else this.clear();
       }),
       client.onEvent((event) => this.onEvent(event)),
+      // a reveal that waited is applied when the user opens the panel
+      effect(() => {
+        const key = this.section();
+        const panel = this.state.panels.find((item) => item.key === key);
+        const target = panel?.pending ?? null;
+        if (panel === undefined || target === null) return;
+        untracked(() => this.applyTarget(panel, target));
+      }),
     );
   }
 
@@ -117,22 +157,75 @@ export class ExtensionsModel {
     return entry;
   }
 
-  /** Literal values stay; `{ state }` reads the panel's state. Route parameters come with the routes. */
+  /** Literal values stay; `{ state }` reads the panel's state, `{ param }` a parameter of the open route. */
   resolve(panel: PanelRecord, params: Params | undefined): Record<string, unknown> {
+    return this.resolveRow(panel, params, undefined);
+  }
+
+  /** As `resolve`, and `{ field }` reads the row the user opened. */
+  resolveRow(panel: PanelRecord, params: Record<string, RowParam> | undefined, row: unknown): Record<string, unknown> {
     const out: Record<string, unknown> = {};
     if (params === undefined) return out;
-    for (const [key, param] of Object.entries(params)) {
-      if (param !== null && typeof param === 'object') out[key] = 'state' in param ? panel.values[param.state] : undefined;
-      else out[key] = param;
-    }
+    for (const [key, param] of Object.entries(params)) out[key] = this.valueOf(panel, param, row);
     return plain(out);
+  }
+
+  private valueOf(panel: PanelRecord, param: RowParam, row: unknown): unknown {
+    if (param === null || typeof param !== 'object') return param;
+    if ('state' in param) return panel.values[param.state];
+    if ('param' in param) return panel.route?.params[param.param];
+    if ('field' in param) return row === undefined ? undefined : fieldOf(row, param.field);
+    return undefined;
   }
 
   setValue(panel: PanelRecord, key: string, value: unknown) {
     panel.values[key] = value;
   }
 
+  /** The route the panel shows, if the open one still exists. */
+  routeOf(panel: PanelRecord): PanelRoute | null {
+    const open = panel.route;
+    return open === null ? null : (panel.routes.find((route) => route.id === open.id) ?? null);
+  }
+
+  openRoute(panel: PanelRecord, id: string, params: Record<string, unknown>) {
+    if (!panel.routes.some((route) => route.id === id)) {
+      panel.notice = `This panel has no "${id}" view`;
+      return;
+    }
+    panel.notice = null;
+    panel.route = { id, params: plain(params) };
+  }
+
+  closeRoute(panel: PanelRecord) {
+    panel.route = null;
+  }
+
+  /** A row was opened: the route gets what `open` names from the row, the state and the current route. */
+  open(panel: PanelRecord, open: OpenRoute, row: unknown) {
+    this.openRoute(panel, open.route, this.resolveRow(panel, open.params, row));
+  }
+
+  /** The title of the open route: as given, or a field of its source read with its parameters; the id until then. */
+  routeTitle(panel: PanelRecord): string {
+    const route = this.routeOf(panel);
+    if (route === null) return '';
+    if (typeof route.title === 'string') return route.title;
+    if (route.title === undefined || route.source === undefined) return route.id;
+    const { source } = route;
+    const params = this.resolve(panel, route.params);
+    const entry = untracked(() => this.entry(panel, source, params));
+    const value = fieldOf(entry.value, route.title.field);
+    if (value !== undefined && value !== null && value !== '' && typeof value !== 'object') return String(value);
+    return entry.status === 'loading' || entry.status === 'idle' ? '…' : route.id;
+  }
+
   async run(panel: PanelRecord, widget: ButtonWidget): Promise<void> {
+    if (widget.navigate !== undefined) {
+      this.openRoute(panel, widget.navigate.route, this.resolve(panel, widget.navigate.params));
+      return;
+    }
+    if (widget.command === undefined) return;
     if (!panel.capabilities.write) {
       panel.notice = `${widget.label}: this panel may not run commands`;
       return;
@@ -168,6 +261,43 @@ export class ExtensionsModel {
   refresh(panel: PanelRecord) {
     for (const entry of panel.entries) entry.stale = true;
     void this.readers.get(panel.key)?.request(true);
+  }
+
+  /**
+   * The package points at a panel, a route or a selection. The panel shows it at once when it is open, or when the
+   * panel app is shown and nobody is typing in it; otherwise the sidebar marks the panel and the target waits there.
+   * A target for a panel not listed yet waits for the list.
+   */
+  reveal(name: string, target: unknown) {
+    if (!isTarget(target)) return;
+    const key = panelKey(name, target.panel);
+    const panel = this.state.panels.find((item) => item.key === key);
+    if (panel === undefined) {
+      this.waiting.set(key, target);
+      void this.reader.request();
+      return;
+    }
+    this.show(panel, target);
+  }
+
+  private show(panel: PanelRecord, target: RevealTarget) {
+    if (this.shown() && this.section() === panel.key) {
+      this.applyTarget(panel, target);
+      return;
+    }
+    if (this.shown() && this.go !== null && !typing()) {
+      this.go(panel.key);
+      this.applyTarget(panel, target);
+      return;
+    }
+    panel.pending = target;
+  }
+
+  private applyTarget(panel: PanelRecord, target: RevealTarget) {
+    panel.pending = null;
+    for (const [key, value] of Object.entries(target.state ?? {})) panel.values[key] = value;
+    if (typeof target.route === 'string') this.openRoute(panel, target.route, target.params ?? {});
+    else panel.route = null;
   }
 
   wake() {
@@ -214,6 +344,8 @@ export class ExtensionsModel {
       lanes: panel.lanes,
       error: panel.error,
       values: {},
+      route: null,
+      pending: null,
       entries: [],
       notice: null,
       busy: null,
@@ -232,6 +364,7 @@ export class ExtensionsModel {
           kept.layout = next.layout;
           kept.routes = next.routes;
           kept.version++;
+          if (kept.route !== null && !next.routes.some((route) => route.id === kept.route?.id)) kept.route = null;
         }
         kept.lanes = next.lanes;
         kept.title = next.title;
@@ -257,6 +390,12 @@ export class ExtensionsModel {
       this.readers.set(key, new Reader(() => this.loadPanel(key), () => this.shown() && this.section() === key, this.delay));
     }
     this.readers.get(this.section())?.wake();
+    for (const [key, target] of [...this.waiting]) {
+      const panel = panels.find((item) => item.key === key);
+      if (panel === undefined) continue;
+      this.waiting.delete(key);
+      this.show(panel, target);
+    }
   }
 
   private clear() {
@@ -264,6 +403,7 @@ export class ExtensionsModel {
     this.state.extensions = [];
     this.state.panels = [];
     this.state.overflow = 0;
+    this.waiting.clear();
     for (const reader of this.readers.values()) reader.dispose();
     this.readers.clear();
   }
@@ -321,6 +461,11 @@ export class ExtensionsModel {
       const payload = (event.payload ?? {}) as { name?: unknown; source?: unknown };
       if (typeof payload.name === 'string' && typeof payload.source === 'string') this.invalidate(payload.name, payload.source);
       else void this.reader.request();
+      return;
+    }
+    if (event.type === 'extension:reveal') {
+      const payload = (event.payload ?? {}) as { name?: unknown; target?: unknown };
+      if (typeof payload.name === 'string') this.reveal(payload.name, payload.target);
       return;
     }
     if (event.type.startsWith('ext:')) this.onPackageEvent(event.type.slice(4), event.payload);

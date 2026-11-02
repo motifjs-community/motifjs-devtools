@@ -1,6 +1,7 @@
-export type NavItem = { key: string; section: string; label: string; icon: string; order: number; builtin: boolean; writes: boolean; broken: boolean };
+export type NavItem = { key: string; section: string; label: string; icon: string; order: number; builtin: boolean; writes: boolean; broken: boolean; pending: boolean };
 
-export type NavPanel = { key: string; title: string; icon: string; order: number; writes: boolean; broken: boolean };
+/** `pending`: the package pointed at something in the panel and waits for the user to open it. */
+export type NavPanel = { key: string; title: string; icon: string; order: number; writes: boolean; broken: boolean; pending: boolean };
 
 const compare = (a: NavItem, b: NavItem) => a.order - b.order || Number(b.builtin) - Number(a.builtin) || a.label.localeCompare(b.label);
 
@@ -15,7 +16,7 @@ export function mergeNavigation(builtin: readonly NavItem[], panels: readonly Na
     keys.add(panel.key);
     let item = known.get(panel.key);
     if (item === undefined) {
-      item = { key: panel.key, section: panel.key, label: panel.title, icon: panel.icon, order: panel.order, builtin: false, writes: panel.writes, broken: panel.broken };
+      item = { key: panel.key, section: panel.key, label: panel.title, icon: panel.icon, order: panel.order, builtin: false, writes: panel.writes, broken: panel.broken, pending: panel.pending };
       known.set(panel.key, item);
     } else {
       item.label = panel.title;
@@ -23,6 +24,7 @@ export function mergeNavigation(builtin: readonly NavItem[], panels: readonly Na
       item.order = panel.order;
       item.writes = panel.writes;
       item.broken = panel.broken;
+      item.pending = panel.pending;
     }
     items.push(item);
   }

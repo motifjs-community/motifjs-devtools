@@ -1,4 +1,5 @@
 import { Component, FromService, reactive, useApplication, type AppWindow, type ComponentBase, type ServiceProvider } from '@motifx/core';
+import { runAction } from '../actions';
 import { Hint, PageHead } from '../layout';
 import { CartService, DialogState, PriceFormatter } from '../services';
 import { toast } from '../toasts';
@@ -80,6 +81,16 @@ export class LabPage extends Component<HTMLElement> {
 
   fail() {
     throw new Error('The click handler of "Throw an error" failed on purpose');
+  }
+
+  failAction() {
+    try {
+      runAction('lab/fail', () => {
+        throw new Error('This action failed on purpose');
+      });
+    } catch {
+      toast('The action failed; the Actions panel points at it');
+    }
   }
 
   override onDisposed() {
@@ -195,6 +206,9 @@ export class LabPage extends Component<HTMLElement> {
             <button type="button" onclick={() => toast('Hello from the Lab')}>
               Show a toast
             </button>
+            <button type="button" onclick={() => this.failAction()}>
+              Run a failing action
+            </button>
           </div>
           <ul class="dupes">
             {s.dupes.map((n) => (
@@ -204,8 +218,9 @@ export class LabPage extends Component<HTMLElement> {
         </div>
 
         <Hint
-          screens="Elements, Performance, Reactivity, Services, Logs"
+          screens="Elements, Performance, Reactivity, Services, Logs, Actions"
           points={[
+            'Actions: "Run a failing action" fails on purpose. The panel jumps to that action when it is shown, or marks Actions in the sidebar until you open it.',
             'Elements: the x-wait panel shows WAITING until you open it; the ternary, the && details and the switch are named Ternary, When and Switch.',
             'Elements: "Open in a window" and "Move into the iframe" list that window as a root of its own with the cart summary under it, marked with the name of its document; the iframe row is named "Embedded cart".',
             'Performance: "Build 1,000 rows" is one Build bar on the timeline; open it to see the rows by type. "Clear" is one Dispose bar.',

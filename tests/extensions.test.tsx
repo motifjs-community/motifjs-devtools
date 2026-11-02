@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { BridgeMethod } from '../src/bridge/protocol';
-import type { Client } from '../src/client/client';
+import type { Client, ClientEvent } from '../src/client/client';
+import { DevtoolsModel, type Section } from '../src/panel/model/DevtoolsModel';
 import { ExtensionsModel } from '../src/panel/model/ExtensionsModel';
-import { cleanup, fakeExtensionClient, props, renderPanel, settle, text, type FakeExtension, type FakePage, type Rendered } from './extension-helpers';
+import { cleanup, fakeExtensionClient, props, renderPanel, settle, text, texts, type FakeExtension, type FakePage, type Rendered } from './extension-helpers';
 
 const HISTORY = (): FakeExtension => ({
   sources: { rows: { key: 'id', events: { 'row:added': 'refresh' } }, one: {} },
@@ -220,5 +221,188 @@ describe('extension panels', () => {
     await model.load();
     expect(model.state.panels.map((panel) => panel.key)).toEqual(['ext:history:quiet', 'ext:history:list']);
     expect(model.state.overflow).toBe(3);
+  });
+});
+
+const ACTIONS_ROWS = [
+  { id: 1, name: 'cart/add', status: 'done' },
+  { id: 2, name: 'orders/add', status: 'failed' },
+];
+
+const ACTIONS = (): FakeExtension => ({
+  sources: { actions: { key: 'id' }, selectedAction: {} },
+  commands: ['replay'],
+  panels: [
+    {
+      id: 'actions',
+      title: 'Actions',
+      capabilities: { read: true, subscribe: true, write: true },
+      layout: {
+        type: 'stack',
+        children: [
+          { type: 'table', source: 'actions', key: 'id', select: 'actionId', columns: [{ field: 'name' }], open: { route: 'action', params: { id: { field: 'id' }, from: { state: 'actionId' }, how: 'row' } } },
+          { type: 'button', label: 'Open', navigate: { route: 'action', params: { id: { state: 'actionId' } } } },
+          { type: 'button', label: 'Nowhere', navigate: { route: 'missing' } },
+        ],
+      },
+      routes: [
+        {
+          id: 'action',
+          title: { field: 'name' },
+          source: 'selectedAction',
+          params: { id: { param: 'id' } },
+          layout: {
+            type: 'stack',
+            children: [
+              { type: 'text', title: 'Status', source: 'selectedAction', params: { id: { param: 'id' } }, field: 'status' },
+              { type: 'button', label: 'Replay', command: 'replay', args: { id: { param: 'id' } } },
+            ],
+          },
+        },
+      ],
+    },
+  ],
+  read: (_panel, source, params) => (source === 'actions' ? ACTIONS_ROWS : (ACTIONS_ROWS.find((row) => row.id === params.id) ?? null)),
+  call: () => 'ok',
+});
+
+const KEY = 'ext:action-history:actions';
+
+describe('routes of a panel', () => {
+  it('opens a route from a button, shows its layout under a path back to the panel, and resolves { param } in it', async () => {
+    const { root, calls } = await render({ extensions: { 'action-history': ACTIONS() } }, KEY);
+    const panel = panelOf(KEY);
+    model!.setValue(panel, 'actionId', 2);
+    [...root.querySelectorAll<HTMLButtonElement>('.dt-w-button button')].find((button) => text(button) === 'Open')!.click();
+    await settle();
+    expect(panel.route).toEqual({ id: 'action', params: { id: 2 } });
+    expect(texts(root, '.dt-ext-path > span')).toEqual(['Actions', '›', 'orders/add']);
+    expect(root.querySelector('.dt-ext-back')).not.toBeNull();
+    expect(root.querySelector('.dt-w-table')).toBeNull();
+    expect(text(root.querySelector('.dt-w-text .dt-w-value'))).toBe('failed');
+    root.querySelector<HTMLButtonElement>('.dt-w-button button')!.click();
+    await settle();
+    expect(calls.find((call) => call[0] === 'callExtension')).toEqual(['callExtension', 'action-history', 'actions', 'replay', { id: 2 }]);
+    root.querySelector<HTMLButtonElement>('.dt-ext-back')!.click();
+    await settle();
+    expect(panel.route).toBeNull();
+    expect(root.querySelector('.dt-ext-back')).toBeNull();
+    expect(text(root.querySelector('.dt-ext-path'))).toBe('Actions');
+    expect(root.querySelector('.dt-w-table')).not.toBeNull();
+  });
+
+  it('opens a route from a double-clicked row with the fields of that row', async () => {
+    const { root } = await render({ extensions: { 'action-history': ACTIONS() } }, KEY);
+    const panel = panelOf(KEY);
+    root.querySelector<HTMLElement>('.dt-trow')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    await settle();
+    expect(panel.route).toEqual({ id: 'action', params: { id: 1, how: 'row' } });
+    expect(texts(root, '.dt-ext-path > span')).toEqual(['Actions', '›', 'cart/add']);
+  });
+
+  it('tells when a button points at a route the panel does not have', async () => {
+    const { root } = await render({ extensions: { 'action-history': ACTIONS() } }, KEY);
+    [...root.querySelectorAll<HTMLButtonElement>('.dt-w-button button')].find((button) => text(button) === 'Nowhere')!.click();
+    await settle();
+    expect(panelOf(KEY).route).toBeNull();
+    expect(text(root.querySelector('.dt-ext-notice'))).toBe('This panel has no "missing" view');
+  });
+
+  it('closes the route when the package no longer has it', async () => {
+    const page: Page = { extensions: { 'action-history': ACTIONS() } };
+    const { emit } = await render(page, KEY);
+    const panel = panelOf(KEY);
+    model!.openRoute(panel, 'action', { id: 1 });
+    (page.extensions['action-history'].panels as { routes: unknown[] }[])[0].routes = [];
+    emit({ type: 'extension:changed', payload: { name: 'action-history' } });
+    await settle();
+    expect(panel.route).toBeNull();
+    expect(panel.version).toBe(2);
+  });
+});
+
+describe('reveal from the page', () => {
+  type Opened = { client: Client; emit: (event: ClientEvent) => void; devtools: DevtoolsModel; gone: string[] };
+
+  const open = async (page: Page, section: string, shown = true): Promise<Opened> => {
+    const fake = fakeExtensionClient(page);
+    const devtools = new DevtoolsModel(fake.client);
+    devtools.state.section = section as Section;
+    const gone: string[] = [];
+    model = new ExtensionsModel(fake.client, () => devtools.state.section, 0, () => shown, (key) => {
+      gone.push(key);
+      devtools.select(key as Section);
+    });
+    await model.load();
+    return { client: fake.client, emit: fake.emit, devtools, gone };
+  };
+
+  const target = (state: Record<string, unknown>, route?: string, params?: Record<string, unknown>) => ({ type: 'extension:reveal', payload: { name: 'action-history', target: { panel: 'actions', state, route, params } } });
+
+  it('applies the target at once while the panel is open: the state, and the route or the panel itself', async () => {
+    const { emit } = await open({ extensions: { 'action-history': ACTIONS() } }, KEY);
+    const panel = panelOf(KEY);
+    emit(target({ actionId: 2 }, 'action', { id: 2 }));
+    await settle();
+    expect(panel.values.actionId).toBe(2);
+    expect(panel.route).toEqual({ id: 'action', params: { id: 2 } });
+    expect(panel.pending).toBeNull();
+    emit(target({ actionId: 1 }));
+    await settle();
+    expect(panel.values.actionId).toBe(1);
+    expect(panel.route).toBeNull();
+  });
+
+  it('moves the user to the panel when the panel app is shown and nobody is typing', async () => {
+    const { emit, devtools, gone } = await open({ extensions: { 'action-history': ACTIONS() } }, 'elements');
+    emit(target({ actionId: 2 }));
+    await settle();
+    expect(gone).toEqual([KEY]);
+    expect(devtools.state.section).toBe(KEY);
+    expect(panelOf(KEY).values.actionId).toBe(2);
+    expect(panelOf(KEY).pending).toBeNull();
+  });
+
+  it('only marks the panel while the user types, and applies the target when they open it', async () => {
+    document.body.innerHTML = '<input id="busy">';
+    const input = document.querySelector<HTMLInputElement>('#busy')!;
+    input.focus();
+    expect(document.activeElement).toBe(input);
+    const { emit, devtools, gone } = await open({ extensions: { 'action-history': ACTIONS() } }, 'elements');
+    const panel = panelOf(KEY);
+    emit(target({ actionId: 2 }, 'action', { id: 2 }));
+    await settle();
+    expect(gone).toEqual([]);
+    expect(panel.pending).toEqual({ panel: 'actions', state: { actionId: 2 }, route: 'action', params: { id: 2 } });
+    expect(panel.values.actionId).toBeUndefined();
+    devtools.select(KEY as Section);
+    await settle();
+    expect(panel.pending).toBeNull();
+    expect(panel.values.actionId).toBe(2);
+    expect(panel.route).toEqual({ id: 'action', params: { id: 2 } });
+    document.body.innerHTML = '';
+  });
+
+  it('only marks the panel while the panel app is hidden', async () => {
+    const { emit, gone } = await open({ extensions: { 'action-history': ACTIONS() } }, 'elements', false);
+    emit(target({ actionId: 1 }));
+    await settle();
+    expect(gone).toEqual([]);
+    expect(panelOf(KEY).pending).toMatchObject({ state: { actionId: 1 } });
+  });
+
+  it('keeps a target for a panel it has not listed yet, and ignores one that is not a target', async () => {
+    const page: Page = { extensions: {} };
+    const { emit, gone } = await open(page, 'elements');
+    emit(target({ actionId: 1 }));
+    emit({ type: 'extension:reveal', payload: { name: 'action-history', target: { route: 'action' } } });
+    emit({ type: 'extension:reveal', payload: { name: 'action-history', target: 'actions' } });
+    await settle();
+    expect(model!.state.panels).toHaveLength(0);
+    page.extensions['action-history'] = ACTIONS();
+    emit({ type: 'extension:registered', payload: { name: 'action-history' } });
+    await settle();
+    expect(gone).toEqual([KEY]);
+    expect(panelOf(KEY).values.actionId).toBe(1);
   });
 });

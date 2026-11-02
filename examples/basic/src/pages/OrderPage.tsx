@@ -1,7 +1,7 @@
 import { FromService, RouterLink, useNavigation } from '@motifx/core';
 import { Hint, PageHead } from '../layout';
 import { OrderDraft, PriceFormatter } from '../services';
-import { orders } from '../stores';
+import { ordersById } from '../stores';
 
 const draftText = (draft: OrderDraft) => `OrderDraft #${draft.number}, created at ${draft.createdAt} for this navigation`;
 
@@ -10,7 +10,7 @@ export function OrderPage() {
   const draft = FromService(OrderDraft)!;
   const prices = FromService(PriceFormatter)!;
   const id = Number(nav.params.id);
-  const order = () => orders.list.find((o) => o.id === id);
+  const order = () => ordersById.value.get(id);
   return (
     <section>
       <PageHead title={`Order #${id}`} text="The id comes from the route params. Each visit opens a new navigation scope with its own OrderDraft." />

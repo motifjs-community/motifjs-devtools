@@ -65,6 +65,11 @@
   says how many pages keep it. A scope lists the services created in it and the registered ones it has not
   created; a created service opens to its fields one level at a time. Created and disposed instances are listed
   live under Activity.
+- **Panels of packages.** A package the app uses can register its own panel with `registerDevtools`: a section
+  in the sidebar drawn from plain metadata (tables, trees, timelines, logs, charts, a detail with its actions,
+  filters, tabs and splits), sources the panel reads, commands it runs, events that change rows as they happen,
+  views inside the panel, lanes on the Performance timeline, and a way to point the user at something. What a
+  package sends is data, never code. See [docs/extensions.md](docs/extensions.md).
 
 Light and dark themes follow the system, or are chosen in the header.
 
@@ -197,11 +202,13 @@ while developing, with Rollup when `storeNames` is on as above.
 | Export | Description |
 | --- | --- |
 | `mount(options?)` | Adds the button and the panel to the page and returns a `DevtoolsHandle`. A second call returns the same handle. |
-| `MountOptions` | All optional: `open` (open at once), `position` (`'bottom'`, `'right'` or `'window'`), `src` (address of a panel page you serve yourself), `html` (a panel page as a string). Without `src` or `html` the panel that comes with the package is used. |
+| `MountOptions` | All optional: `open` (open at once), `position` (`'bottom'`, `'right'` or `'window'`), `src` (address of a panel page you serve yourself), `html` (a panel page as a string), `limits` (what packages may send through the bridge, see `Limits`). Without `src` or `html` the panel that comes with the package is used. |
 | `DevtoolsHandle` | `isOpen`, `position`, `open()`, `close()`, `toggle()`, `dock(position)`, `dispose()` |
-| `createBridge({ send })` | The page side: follows `__MOTIF_DEVTOOLS__`, answers requests, forwards events in batches after the next frame. `receive(message)` takes messages from the panel. `scheduler` replaces its frame, task and timer functions, for tests. |
-| `createClient(port)` | The panel side: `request(method, ...args)`, `stream(method, onChunk, ...args)` for answers sent in slices, `onEvent`, `onStatus`, `onDock`, `setDock`, and `shown` / `onShown` for the host showing or hiding the panel. |
+| `createBridge({ send })` | The page side: follows `__MOTIF_DEVTOOLS__`, answers requests, forwards events in batches after the next frame. `receive(message)` takes messages from the panel. `scheduler` replaces its frame, task and timer functions, for tests; `limits` bounds what packages may send. |
+| `createClient(port, timeout?, slowTimeout?)` | The panel side: `request(method, ...args)`, `stream(method, onChunk, ...args)` for answers sent in slices, `onEvent`, `onStatus`, `onDock`, `setDock`, and `shown` / `onShown` for the host showing or hiding the panel. A method that runs a package's code waits `slowTimeout`. |
 | `toTransfer(value, depth?)` | Turns any value into JSON data; values JSON cannot carry are marked with `$motif`. |
+| `Limits`, `DEFAULT_LIMITS` | The limits a bridge applies to packages and their defaults. |
+| `PanelMetadata`, `Widget`, … | The types of the metadata a package gives for its panels; `import type` only. See [docs/extensions.md](docs/extensions.md). |
 
 ## Examples
 
@@ -209,14 +216,18 @@ while developing, with Rollup when `storeNames` is on as above.
 ends with what to look at in the panel:
 
 - **Dashboard:** module stores named with their file, a list, flushes with their triggers, and a page kept alive
-  (`keepAlive`) that Performance counts outside the tree after you leave.
+  (`keepAlive`) that Performance counts outside the tree after you leave. Its orders are also a panel of their own
+  (`src/devtools-orders.ts`): a table with a detail, filters, a chart, a log and commands.
+- **Actions:** every button of the app runs through `runAction` (`src/actions.ts`), an operation of the core. The
+  Actions panel shows them in time with the stores they wrote and the actions nested in them, opens one in a view of
+  its own, puts them on a lane of the Performance timeline, and points at a failed one.
 - **Order:** route params and a scoped `OrderDraft` service, created again on every navigation.
 - **Cart:** a singleton `CartService` with a store and two computeds, a transient `PriceFormatter`, a condition and a
   small package that reports to the panel with `registerDevtools`.
 - **Settings:** a signal in `ThemeService`, a store kept in a component field to edit from Stores, and an
   `onLeave` hook that cancels the navigation while there are unsaved changes.
-- **Lab:** `x-wait`, a ternary, `&&` and `switch`, a list of 1,000 rows, a scope opened with `createScope`, a warning
-  and an error.
+- **Lab:** `x-wait`, a ternary, `&&` and `switch`, a list of 1,000 rows, a scope opened with `createScope`, a warning,
+  an error and an action that fails.
 - **Router cases:** a nested route, an alias, a redirect, a missing page, a page that throws and a redirect loop.
 
 ## Contributing

@@ -6,12 +6,12 @@ import { ROW_HEIGHT } from './table';
 
 const LOG_HEIGHT = 240;
 
-type Line = { key: string; time: string; title: string; level: string; tone: string };
+type Line = { key: string; time: string; title: string; level: string; tone: string; data: unknown };
 
-function LogLine(props: { line: Line }) {
+function LogLine(props: { line: Line; open: () => void }) {
   const { line } = props;
   return (
-    <div class="dt-logline" role="row">
+    <div class="dt-logline" role="row" ondblclick={() => props.open()}>
       <span class="dt-logline-time dt-mono">{line.time}</span>
       <span class={`dt-chip${line.tone}`} x-display={() => line.level !== ''}>
         {line.level}
@@ -33,12 +33,13 @@ class LogView extends ReadingView<LogWidget> {
       const lines = this.lines();
       return { items: lines, totalCount: lines.length, hasMore: false };
     },
-    itemTemplate: (line) => <LogLine line={line} />,
+    itemTemplate: (line) => <LogLine line={line} open={() => this.open(line)} />,
   });
 
   override onConfigured() {
     this.class.add('dt-w');
     this.class.add('dt-w-log');
+    if (this.widget.open !== undefined) this.class.add('openable');
     this.element.style.setProperty('--dt-list-height', `${this.widget.height ?? LOG_HEIGHT}px`);
   }
 
@@ -67,10 +68,15 @@ class LogView extends ReadingView<LogWidget> {
         title: formatText(fieldOf(row, this.widget.itemTitle), undefined),
         level,
         tone: toneClass(this.widget.levelTones?.[level]),
+        data: row,
       };
     });
     return this.widget.newestFirst === false ? lines : lines.reverse();
   };
+
+  open(line: Line) {
+    if (this.widget.open !== undefined) this.scope.model.open(this.scope.panel, this.widget.open, line.data);
+  }
 
   left = () => isTruncated(this.value());
 

@@ -15,6 +15,7 @@ import {
 } from './protocol';
 import { adaptLegacy } from './legacy';
 import { boundedEvent, createCallGate, createEventGate, extensionOf, extensionsShape, panelsShape, sourceShape, withTimeout } from './extensions';
+import { withLimits, type Limits } from './limits';
 import { createFlasher, type Flasher } from './flash';
 import { createOutbox, type Outbox } from './outbox';
 import { createPicker, type Picker } from './picker';
@@ -34,6 +35,8 @@ export interface BridgeOptions {
   interval?: number;
   picker?: boolean;
   scheduler?: Scheduler;
+  /** What packages may send through this bridge; the defaults are in `limits.ts`. */
+  limits?: Partial<Limits>;
 }
 
 export interface Bridge {
@@ -113,9 +116,6 @@ const SHAPES: Record<string, (value: unknown, api: Contract) => unknown> = {
   getTree: treeShape,
   getDocuments: (value, api) => (Array.isArray(value) ? value.map((doc, index) => documentRecord(doc, index, api)) : []),
   getRoutes: routeShape,
-  getExtensions: extensionsShape,
-  readExtensionPanels: panelsShape,
-  readExtensionSource: sourceShape,
   getStores: (value) =>
     Array.isArray(value)
       ? value.map((store: StoreRecord) => {
@@ -128,11 +128,18 @@ const SHAPES: Record<string, (value: unknown, api: Contract) => unknown> = {
       : toTransfer(value, 4),
 };
 
-export function createBridge({ send, host = globalThis, interval = 250, picker: withPicker = typeof document !== 'undefined', scheduler = defaultScheduler() }: BridgeOptions): Bridge {
+export function createBridge({ send, host = globalThis, interval = 250, picker: withPicker = typeof document !== 'undefined', scheduler = defaultScheduler(), limits: given }: BridgeOptions): Bridge {
   const outbox: Outbox = createOutbox(send, scheduler);
   const streams = new Map<number, Cancel>();
-  const calls = createCallGate();
-  const events = createEventGate((name, count) => outbox.event('devtools:ext-dropped', { name, count }, pageTime(), true));
+  const limits = withLimits(given);
+  const shapes: Record<string, (value: unknown, api: Contract) => unknown> = {
+    ...SHAPES,
+    getExtensions: (value) => extensionsShape(value, limits),
+    readExtensionPanels: (value) => panelsShape(value, limits),
+    readExtensionSource: (value) => sourceShape(value, limits),
+  };
+  const calls = createCallGate(limits.concurrentCalls);
+  const events = createEventGate((name, count) => outbox.event('devtools:ext-dropped', { name, count }, pageTime(), true), limits.eventRate);
   let api: Contract | null = null;
   let source: Contract | null = null;
   let picker: Picker | null = null;
@@ -182,7 +189,7 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
         const name = extensionOf(event.type);
         if (name !== null) {
           const now = pageTime();
-          if (events.allow(name, now)) outbox.event(event.type, boundedEvent(event.payload), now, true);
+          if (events.allow(name, now)) outbox.event(event.type, boundedEvent(event.payload, limits), now, true);
           return;
         }
         outbox.event(event.type, event.payload, pageTime());
@@ -286,8 +293,8 @@ export function createBridge({ send, host = globalThis, interval = 250, picker: 
       if (owner !== null && !calls.enter(owner)) return reply(request.id, true, { ok: false, error: 'busy' });
       try {
         const work = method.apply(api, args);
-        const value = slow ? await withTimeout(Promise.resolve(work), scheduler.timer) : await work;
-        const shape = SHAPES[request.method];
+        const value = slow ? await withTimeout(Promise.resolve(work), scheduler.timer, limits.callTimeout) : await work;
+        const shape = shapes[request.method];
         reply(request.id, true, shape !== undefined ? shape(value, api) : toTransfer(value, DEPTH[request.method] ?? 4));
       } catch (error) {
         reply(request.id, false, error instanceof Error ? error.message : error);

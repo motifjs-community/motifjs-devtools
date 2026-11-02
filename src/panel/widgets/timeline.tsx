@@ -12,10 +12,12 @@ const TICK = 1000;
 class TimelineView extends ReadingView<TimelineWidget> {
   readonly view_ = reactive({ now: Date.now(), span: DEFAULT_WINDOW });
   private ids = new Map<string, unknown>();
+  private rows = new Map<string, unknown>();
 
   override onConfigured() {
     this.class.add('dt-w');
     this.class.add('dt-w-timeline');
+    if (this.widget.open !== undefined) this.class.add('openable');
     if (typeof this.widget.window === 'number' && this.widget.window > 0) this.view_.span = this.widget.window;
   }
 
@@ -40,6 +42,7 @@ class TimelineView extends ReadingView<TimelineWidget> {
       rows = rows.filter((row) => matches(fieldOf(row, filter.field), wanted));
     }
     const ids = new Map<string, unknown>();
+    const data = new Map<string, unknown>();
     const items: LaneItem[] = [];
     rows.forEach((row, index) => {
       const start = fieldOf(row, this.widget.itemTime);
@@ -49,6 +52,7 @@ class TimelineView extends ReadingView<TimelineWidget> {
       const key = String(id);
       const status = this.widget.itemStatus === undefined ? '' : formatText(fieldOf(row, this.widget.itemStatus), undefined);
       ids.set(key, id);
+      data.set(key, row);
       items.push({
         key,
         id,
@@ -61,6 +65,7 @@ class TimelineView extends ReadingView<TimelineWidget> {
       });
     });
     this.ids = ids;
+    this.rows = data;
     return items;
   };
 
@@ -81,6 +86,12 @@ class TimelineView extends ReadingView<TimelineWidget> {
     const id = this.ids.get(key);
     const current = this.selected();
     this.scope.model.setValue(this.scope.panel, this.widget.select, current !== undefined && String(current) === key ? undefined : id);
+  }
+
+  openBar(target: EventTarget | null) {
+    const key = (target as HTMLElement | null)?.dataset?.key;
+    if (key === undefined || this.widget.open === undefined || !this.rows.has(key)) return;
+    this.scope.model.open(this.scope.panel, this.widget.open, this.rows.get(key));
   }
 
   setSpan(span: number) {
@@ -111,7 +122,7 @@ class TimelineView extends ReadingView<TimelineWidget> {
         <div class={() => (this.error() !== '' ? 'dt-w-empty dt-w-error' : 'dt-w-empty dt-muted')} x-display={() => !this.inWindow()}>
           {() => this.emptyText()}
         </div>
-        <div class="dt-tl-lanes" onclick={(e: Event) => this.pick(e.target)}>
+        <div class="dt-tl-lanes" onclick={(e: Event) => this.pick(e.target)} ondblclick={(e: Event) => this.openBar(e.target)}>
           {this.lanes().map((lane) => (
             <div key={lane.id} class="dt-tl-row">
               <span class="dt-tl-label" title={lane.label}>

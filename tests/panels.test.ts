@@ -39,6 +39,9 @@ describe('panel metadata', () => {
       [{ type: 'detail', source: 'one', sections: [], actions: [{ type: 'button', label: 'x', command: 'c' }] }, null],
       [{ type: 'detail', source: 'one', sections: [], actions: 'no' }, 'invalid actions of "detail"'],
       [{ type: 'stack', children: [{ type: 'split', primary: { type: 'stack', children: [7] }, secondary: { type: 'text' } }] }, 'invalid layout'],
+      [{ type: 'button', label: 'Go', navigate: { route: 'item' } }, null],
+      [{ type: 'button', label: 'Nothing' }, 'a button needs a command or a navigate'],
+      [{ type: 'detail', source: 'one', sections: [], actions: [{ type: 'button', label: 'x' }] }, 'a button needs a command or a navigate'],
     ];
     for (const [layout, error] of layouts) expect(parseExtension(wire([{ id: 'p', title: 'P', layout }])).panels[0].error, JSON.stringify(layout)).toBe(error);
   });

@@ -38,6 +38,8 @@ export const ICONS = {
   timeline: svg('<path d="M2 4h5M9 4h5M2 8h9M2 12h3M7 12h7"/>'),
   list: svg('<path d="M5 4h9M5 8h9M5 12h9"/><path d="M2 4h.01M2 8h.01M2 12h.01"/>'),
   chart: svg('<path d="M2.5 13.5h11"/><path d="M4 11V7M7 11V4M10 11V8.5M13 11V5.5"/>'),
+  back: svg('<path d="M13 8H3.5"/><path d="m7.5 4-4 4 4 4"/>'),
+  dot: svg('<circle cx="8" cy="8" r="3.5" fill="currentColor" stroke="none"/>'),
 } as const;
 
 export type IconName = keyof typeof ICONS;

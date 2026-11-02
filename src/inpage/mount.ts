@@ -1,4 +1,5 @@
 import { createBridge, type Bridge } from '../bridge/bridge';
+import type { Limits } from '../bridge/limits';
 import { CHANNEL, isBridgeMessage, type BridgeMessage, type DockPosition } from '../bridge/protocol';
 import { HOST_STYLES, LOGO_SVG } from './host-styles';
 
@@ -7,6 +8,8 @@ export interface MountOptions {
   html?: string;
   open?: boolean;
   position?: DockPosition;
+  /** What packages may send to the panel through the bridge; see `Limits`. */
+  limits?: Partial<Limits>;
 }
 
 export interface DevtoolsHandle {
@@ -189,7 +192,7 @@ export function mount(options: MountOptions = {}): DevtoolsHandle {
 
   const ensureBridge = () => {
     if (bridge !== null) return;
-    bridge = createBridge({ send: post });
+    bridge = createBridge({ send: post, limits: options.limits });
     window.addEventListener('message', onMessage);
   };
 

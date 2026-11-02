@@ -229,6 +229,24 @@ describe('bridge: extension panels, sources and commands', () => {
     expect(eventsIn(messages).filter((e) => e.type === 'ext:history:tick')).toHaveLength(EVENT_RATE + 1);
   });
 
+  it('applies the limits given to the bridge in place of the defaults', async () => {
+    const handle = register('history', history());
+    runApp();
+    bridge = createBridge({ send: (message) => messages.push(message), interval: 10, scheduler: microScheduler, limits: { maxPanels: 1, eventRate: 2, sourceSize: 300, concurrentCalls: 0, eventSize: Number.NaN } });
+    expect(await answer('readExtensionPanels', 'history')).toEqual({ ok: false, error: 'too-many-panels' });
+    const rows = (await answer('readExtensionSource', 'history', 'list', 'rows', { n: 50 })) as { value: unknown[] };
+    expect(rows.value.length).toBeLessThan(50);
+    expect((rows.value.at(-1) as Record<string, unknown>)[MARK]).toBe('truncated');
+    for (let i = 0; i < 5; i++) handle.emit('tick', i);
+    await drain();
+    expect(eventsIn(messages).filter((e) => e.type === 'ext:history:tick')).toHaveLength(2);
+    // a limit that is not a positive number keeps its default
+    handle.emit('fat', { text: 'x'.repeat(EVENT_SIZE) });
+    await drain();
+    expect(eventsIn(messages).filter((e) => e.type === 'ext:history:fat')).toHaveLength(0);
+    expect(await answer('callExtension', 'history', 'list', 'done', { id: 1 })).toEqual({ ok: true, value: 'done 1' });
+  });
+
   it('answers unknown-method for the new methods on a core without them', async () => {
     (globalThis as { __MOTIF_DEVTOOLS__?: unknown }).__MOTIF_DEVTOOLS__ = { version: 2, coreVersion: '1.2.0', on: () => () => {}, getExtensions: () => [] };
     start();

@@ -9,6 +9,10 @@ or send any personal data or browsing data.
   `__MOTIF_DEVTOOLS__` object that `app.useDevelopment(true)` creates. It reads nothing else on the page.
 - While the MotifJS tab is open in DevTools, the extension reads the inspected app's component tree, state, routes,
   services, warnings and errors through that object to show them in the panel.
+- A package the app uses may register its own panel through the same object. The extension then reads the data that
+  package gives (its panel description, the sources it names, its events) the same way, and runs a command of the
+  package only when you press its button in the panel. The description is data, never code: nothing the package
+  sends is executed, inserted as HTML or loaded from an address.
 
 ## Where the data goes
 

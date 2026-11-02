@@ -13,6 +13,9 @@ export const orders = reactive({
 
 export const revenue = createComputed(() => orders.list.reduce((sum, order) => sum + order.total, 0));
 
+// one index for every reader of a single order: a page that read the list with find() would rescan it on each change
+export const ordersById = createComputed(() => new Map(orders.list.map((order) => [order.id, order])));
+
 export const session = reactive({ signedIn: false, unsaved: false });
 
 const CUSTOMERS = ['Alan', 'Barbara', 'Dennis', 'Edsger', 'Frances', 'Ken', 'Margaret', 'Tim'];

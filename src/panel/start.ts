@@ -1,6 +1,6 @@
 import { Application, effect } from '@motifx/core';
 import { createClient, type Port } from '../client/client';
-import { DevtoolsModel, type ShownSource } from './model/DevtoolsModel';
+import { DevtoolsModel, type Section, type ShownSource } from './model/DevtoolsModel';
 import { LogsModel } from './model/LogsModel';
 import { ReactivityModel } from './model/ReactivityModel';
 import { RouterModel } from './model/RouterModel';
@@ -35,7 +35,7 @@ export function startPanel(port: Port, options: PanelOptions = {}) {
   const services = new ServicesModel(client, () => model.state.section === 'services', undefined, undefined, shown);
   const performance = new PerformanceModel(client, () => model.state.counters, undefined, undefined, shown);
   const home = new HomeModel(client, () => model.state.section === 'home', undefined, shown);
-  const extensions = new ExtensionsModel(client, () => model.state.section, undefined, shown);
+  const extensions = new ExtensionsModel(client, () => model.state.section, undefined, shown, (section) => model.select(section as Section));
   const lanes = new LanesModel(client, () =>
     extensions.state.panels.flatMap((panel) =>
       panel.lanes.map((lane) => ({ key: `${panel.name}/${lane.id}`, name: panel.name, label: lane.label, tone: lane.tone, event: `ext:${panel.name}:${lane.event}`, itemDuration: lane.itemDuration, itemTitle: lane.itemTitle })),

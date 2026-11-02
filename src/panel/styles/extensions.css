@@ -166,6 +166,45 @@
   color: var(--dt-danger);
 }
 
+.dt-nav-mark.pending {
+  color: var(--dt-accent);
+}
+
+.dt-ext-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dt-ext-back {
+  flex: none;
+  margin-bottom: 2px;
+  color: var(--dt-text);
+}
+
+.dt-ext-back:hover {
+  background: var(--dt-bg-raised);
+}
+
+.dt-ext-path {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dt-ext-path > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dt-ext-parent {
+  color: var(--dt-muted);
+  font-weight: 500;
+}
+
 .dt-nav-overflow {
   margin: 4px 16px 8px;
   font-size: 12px;
@@ -424,6 +463,14 @@
 .dt-trow.selected {
   background: var(--dt-bg-active);
   border-left-color: var(--dt-accent);
+}
+
+/* a double click on a row opens a route of the panel */
+.openable .dt-trow,
+.openable .dt-row,
+.openable .dt-logline,
+.openable .dt-tl-bar {
+  cursor: pointer;
 }
 
 .dt-tcell {

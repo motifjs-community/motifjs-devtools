@@ -54,6 +54,7 @@ function checkLayout(value: unknown): string | null {
   }
   if (value.type === 'split' && (record.primary === undefined || record.secondary === undefined)) return 'a split needs primary and secondary';
   if (value.type === 'tabs' && !Array.isArray(record.tabs)) return 'tabs need a list of tabs';
+  if (value.type === 'button' && typeof record.command !== 'string' && !isRecord(record.navigate)) return 'a button needs a command or a navigate';
   return null;
 }
 

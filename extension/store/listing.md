@@ -38,6 +38,8 @@ What you can inspect:
   disposals, and the slowest components, flushes and navigations.
 • Router: the current route with its params, recent navigations with their outcome and duration, and the route
   configuration as a tree.
+• Panels of packages: a package the app uses can describe its own panel (tables, trees, timelines, logs, charts, a
+  detail with commands) and the tab draws it; what the package sends is data, never code.
 • Stores: every reactive store, signal and computed, named after the field or module that keeps it, editable in
   place.
 • Services: registered services, the scope tree with the services created in each scope, and live activity.

@@ -29,7 +29,7 @@ export const SECTIONS: { id: BuiltinSection; label: string; icon: string }[] = [
 ];
 
 // Built-in sections sit at 10, 20 … 80; a package places its panel among them with `order`.
-const BUILTIN: NavItem[] = SECTIONS.map((section, index) => ({ key: section.id, section: section.id, label: section.label, icon: section.icon, order: (index + 1) * 10, builtin: true, writes: false, broken: false }));
+const BUILTIN: NavItem[] = SECTIONS.map((section, index) => ({ key: section.id, section: section.id, label: section.label, icon: section.icon, order: (index + 1) * 10, builtin: true, writes: false, broken: false, pending: false }));
 
 const DOCKS: { id: DockPosition; label: string; icon: string }[] = [
   { id: 'bottom', label: 'Dock to bottom', icon: ICONS.dockBottom },
@@ -54,7 +54,7 @@ export class Shell extends Component<HTMLDivElement> {
   override onConfigured() {
     this.class.add('dt-app');
     const stop = effect(() => {
-      const panels = this.extensions.state.panels.map((panel) => ({ key: panel.key, title: panel.title, icon: iconOf(panel.icon), order: panel.order, writes: panel.capabilities.write, broken: panel.error !== null }));
+      const panels = this.extensions.state.panels.map((panel) => ({ key: panel.key, title: panel.title, icon: iconOf(panel.icon), order: panel.order, writes: panel.capabilities.write, broken: panel.error !== null, pending: panel.pending !== null }));
       this.nav.items = mergeNavigation(BUILTIN, panels, this.known);
     });
     this.motif.setDisposable(stop);
@@ -137,8 +137,9 @@ export class Shell extends Component<HTMLDivElement> {
                   <span class="dt-badge" x-display={() => item.section === 'logs' && m.state.issues > 0}>
                     {() => m.state.issues}
                   </span>
-                  <span class="dt-nav-mark" title="Commands of this panel change the app" x-html={ICONS.pen} x-display={() => item.writes && !item.broken}></span>
-                  <span class="dt-nav-mark broken" title="This panel has a problem" x-html={ICONS.warning} x-display={() => item.broken}></span>
+                  <span class="dt-nav-mark pending" title="The package points at something here" x-html={ICONS.dot} x-display={() => item.pending}></span>
+                  <span class="dt-nav-mark" title="Commands of this panel change the app" x-html={ICONS.pen} x-display={() => item.writes && !item.broken && !item.pending}></span>
+                  <span class="dt-nav-mark broken" title="This panel has a problem" x-html={ICONS.warning} x-display={() => item.broken && !item.pending}></span>
                 </button>
               </li>
             ))}

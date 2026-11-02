@@ -11,6 +11,7 @@ import { ApiClient, CartService, DialogState, OrderDraft, PriceFormatter, ThemeS
 import { session } from './stores';
 import { toast } from './toasts';
 import './devtools-orders';
+import './actions';
 import './styles.css';
 
 const routes: RouteItem[] = [

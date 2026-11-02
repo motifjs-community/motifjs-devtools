@@ -1,4 +1,5 @@
 import { Component, FromService, RouterLink } from '@motifx/core';
+import { runAction } from '../actions';
 import { Hint, PageHead } from '../layout';
 import { PriceFormatter } from '../services';
 import { addOrder, advanceFirstOrder, orders, removeLastOrder, revenue, type Order } from '../stores';
@@ -47,13 +48,13 @@ export class Dashboard extends Component<HTMLElement> {
           <StatCard label="Waiting to ship" value={() => String(orders.list.filter((o) => o.status !== 'shipped').length)} />
         </div>
         <div class="toolbar">
-          <button type="button" class="primary" onclick={() => addOrder()}>
+          <button type="button" class="primary" onclick={() => runAction('orders/add', addOrder)}>
             Add order
           </button>
-          <button type="button" onclick={() => advanceFirstOrder()}>
+          <button type="button" onclick={() => runAction('orders/advance', advanceFirstOrder)}>
             Advance first open order
           </button>
-          <button type="button" onclick={() => removeLastOrder()}>
+          <button type="button" onclick={() => runAction('orders/remove', removeLastOrder)}>
             Remove last order
           </button>
         </div>
@@ -73,9 +74,10 @@ export class Dashboard extends Component<HTMLElement> {
           </tbody>
         </table>
         <Hint
-          screens="Orders, Stores, Reactivity, Elements, Performance"
+          screens="Orders, Actions, Stores, Reactivity, Elements, Performance"
           points={[
             'Orders: a panel the app registers itself (src/devtools-orders.ts). Its counters and value tree read the store, its buttons run the same commands as this page, and it follows every change made here.',
+            'Actions: every button here runs as an action (src/actions.ts). It appears on the timeline the moment it starts; select it for the stores it wrote, double-click it for its own page.',
             'Stores: "orders" and "revenue" are listed with their file, src/stores.ts. "Advance first open order" changes a field you can watch there.',
             'Reactivity: every button above is one flush. Its triggers name the store and field that changed, such as orders.list.',
             'Elements: the table body holds a List with its ListItems; each OrderRow is a function component.',

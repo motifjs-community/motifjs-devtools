@@ -166,8 +166,9 @@ export class ButtonView extends WidgetView<ButtonWidget> {
     this.class.add('dt-w-button');
   }
 
-  busy = () => this.scope.panel.busy === this.widget.command;
-  allowed = () => this.scope.panel.capabilities.write;
+  busy = () => this.widget.command !== undefined && this.scope.panel.busy === this.widget.command;
+  // going to a route changes nothing in the app; a command needs the panel's write
+  allowed = () => this.widget.navigate !== undefined || this.scope.panel.capabilities.write;
 
   override view() {
     const icon = this.widget.icon === undefined ? '' : iconOf(this.widget.icon, 'play');

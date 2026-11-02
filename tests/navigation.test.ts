@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { mergeNavigation, type NavItem, type NavPanel } from '../src/panel/navigation';
 
-const builtin = (section: string, order: number): NavItem => ({ key: section, section, label: section, icon: '', order, builtin: true, writes: false, broken: false });
-const panel = (key: string, title: string, order: number, writes = false): NavPanel => ({ key, title, icon: '', order, writes, broken: false });
+const builtin = (section: string, order: number): NavItem => ({ key: section, section, label: section, icon: '', order, builtin: true, writes: false, broken: false, pending: false });
+const panel = (key: string, title: string, order: number, writes = false, pending = false): NavPanel => ({ key, title, icon: '', order, writes, broken: false, pending });
 
 const BUILTIN = [builtin('home', 10), builtin('elements', 20), builtin('logs', 80)];
 
@@ -21,9 +21,9 @@ describe('sidebar navigation', () => {
     const known = new Map<string, NavItem>();
     const first = mergeNavigation(BUILTIN, [panel('ext:a:p', 'Panel', 30)], known);
     const item = first.find((entry) => entry.key === 'ext:a:p')!;
-    const second = mergeNavigation(BUILTIN, [panel('ext:a:p', 'Renamed', 5, true)], known);
+    const second = mergeNavigation(BUILTIN, [panel('ext:a:p', 'Renamed', 5, true, true)], known);
     expect(second.find((entry) => entry.key === 'ext:a:p')).toBe(item);
-    expect(item).toMatchObject({ label: 'Renamed', order: 5, writes: true });
+    expect(item).toMatchObject({ label: 'Renamed', order: 5, writes: true, pending: true });
     expect(second[0]).toBe(item);
   });
 
