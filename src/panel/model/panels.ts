@@ -1,5 +1,5 @@
 import type { ExtensionSourceSettings } from '../../bridge/protocol';
-import type { PanelCapabilities, PanelRoute, Widget } from '../schema';
+import type { PanelCapabilities, PanelRoute, PerformanceLane, Widget } from '../schema';
 
 export const NAME_RULE = /^[a-z0-9-]{1,40}$/;
 export const DEFAULT_ORDER = 100;
@@ -16,6 +16,7 @@ export type ParsedPanel = {
   capabilities: Required<PanelCapabilities>;
   layout: Widget | null;
   routes: PanelRoute[];
+  lanes: PerformanceLane[];
   error: string | null;
 };
 
@@ -70,6 +71,22 @@ function parseRoutes(value: unknown): PanelRoute[] {
   return routes;
 }
 
+const TONES = new Set(['accent', 'info', 'success', 'warning', 'danger', 'muted']);
+
+function parseLanes(value: unknown): PerformanceLane[] {
+  if (!Array.isArray(value)) return [];
+  const lanes: PerformanceLane[] = [];
+  for (const item of value) {
+    if (!isRecord(item) || typeof item.id !== 'string' || !NAME_RULE.test(item.id) || typeof item.event !== 'string' || item.event === '') continue;
+    const lane: PerformanceLane = { id: item.id, label: typeof item.label === 'string' && item.label !== '' ? item.label : item.id, event: item.event };
+    if (typeof item.tone === 'string' && TONES.has(item.tone)) lane.tone = item.tone as PerformanceLane['tone'];
+    if (typeof item.itemDuration === 'string') lane.itemDuration = item.itemDuration;
+    if (typeof item.itemTitle === 'string') lane.itemTitle = item.itemTitle;
+    lanes.push(lane);
+  }
+  return lanes;
+}
+
 function parsePanel(value: unknown, index: number, seen: Set<string>): ParsedPanel {
   const record = isRecord(value) ? value : {};
   const rawId = typeof record.id === 'string' ? record.id : `panel-${index + 1}`;
@@ -83,6 +100,7 @@ function parsePanel(value: unknown, index: number, seen: Set<string>): ParsedPan
     capabilities: { read: capabilities.read === true, subscribe: capabilities.subscribe === true, write: capabilities.write === true },
     layout: null,
     routes: parseRoutes(record.routes),
+    lanes: parseLanes(record.lanes),
     error: null,
   };
   if (!isRecord(value)) panel.error = 'panel is not an object';
@@ -132,6 +150,7 @@ export function describePanel(name: string): ParsedPanel {
     capabilities: { read: true, subscribe: false, write: false },
     layout: { type: 'json', source: DESCRIBE_SOURCE, empty: 'describe() gave nothing' },
     routes: [],
+    lanes: [],
     error: null,
   };
 }

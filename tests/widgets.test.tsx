@@ -3,7 +3,7 @@ import type { Widget } from '../src/panel/schema';
 import { knownWidgets } from '../src/panel/widgets';
 import { cleanup, renderPanel, settle, text, texts, type FakePage, type Rendered } from './extension-helpers';
 
-const SCHEMA_TYPES: Widget['type'][] = ['stack', 'toolbar', 'split', 'tabs', 'text', 'counter', 'badge', 'json', 'code', 'button', 'filter', 'table', 'tree', 'detail', 'chart'];
+const SCHEMA_TYPES: Widget['type'][] = ['stack', 'toolbar', 'split', 'tabs', 'text', 'counter', 'badge', 'json', 'code', 'button', 'filter', 'table', 'tree', 'detail', 'chart', 'log', 'timeline'];
 
 describe('widget registry', () => {
   it('has a view for every widget of the schema', () => {
@@ -22,6 +22,15 @@ const TREE = [
   { id: 'b', name: 'Beta', count: 0, children: [] },
 ];
 
+const NOW = Date.now();
+
+const EVENTS = () => [
+  { id: 'a', name: 'cart/add', at: NOW - 50_000, took: 3000, lane: 'actions', level: 'info' },
+  { id: 'b', name: 'orders/load', at: NOW - 20_000, took: 0, lane: 'actions', level: 'warn' },
+  { id: 'c', name: '/settings', at: NOW - 5_000, took: 1200, lane: 'navigation', level: 'info' },
+  { id: 'old', name: 'ancient', at: NOW - 600_000, took: 10, lane: 'actions', level: 'info' },
+];
+
 const page = (layout: Widget, sources: Record<string, unknown> = {}): FakePage => ({
   extensions: {
     shop: {
@@ -34,6 +43,7 @@ const page = (layout: Widget, sources: Record<string, unknown> = {}): FakePage =
         if (source === 'tree') return TREE;
         if (source === 'statuses') return [{ code: 'new', label: 'New' }, { code: 'paid', label: 'Paid' }];
         if (source === 'cut') return [...ORDERS, { $motif: 'truncated', remaining: 40 }];
+        if (source === 'events') return EVENTS();
         return null;
       },
       call: () => 'ok',
@@ -228,6 +238,64 @@ describe('detail', () => {
     rendered.model.setValue(panelOf(rendered), 'id', 1);
     await settle();
     expect([...root.querySelectorAll('.dt-detail-section')].filter((section) => !section.hasAttribute('hidden')).map((section) => text(section.querySelector('.dt-w-title')))).toEqual(['customer', 'total', 'note', 'State']);
+  });
+});
+
+describe('log', () => {
+  it('lists the lines newest first with a time, a level chip and the title, narrowed by the filters', async () => {
+    const rendered = await render({ type: 'log', source: 'events', itemTime: 'at', itemTitle: 'name', itemLevel: 'level', levelTones: { warn: 'warning' }, filters: [{ field: 'name', state: 'q' }] });
+    const { root } = rendered;
+    const lines = () => texts(root, '.dt-logline-title');
+    expect(lines()).toEqual(['ancient', '/settings', 'orders/load', 'cart/add']);
+    const chips = [...root.querySelectorAll('.dt-logline .dt-chip')];
+    expect(chips.map(text)).toEqual(['info', 'info', 'warn', 'info']);
+    expect(chips[2].classList.contains('tone-warning')).toBe(true);
+    expect(texts(root, '.dt-logline-time')[1]).toMatch(/^\d\d:\d\d:\d\d\.\d{3}$/);
+    rendered.model.setValue(panelOf(rendered), 'q', 'orders');
+    await settle();
+    expect(lines()).toEqual(['orders/load']);
+  });
+});
+
+describe('timeline', () => {
+  const timeline: Widget = {
+    type: 'timeline',
+    source: 'events',
+    key: 'id',
+    itemTime: 'at',
+    itemDuration: 'took',
+    itemTitle: 'name',
+    itemStatus: 'level',
+    statusTones: { warn: 'warning' },
+    itemLane: 'lane',
+    select: 'picked',
+    live: false,
+  };
+
+  it('puts the rows of the window in lanes, as bars or dots, and selects one into the state', async () => {
+    const rendered = await render(timeline);
+    const { root } = rendered;
+    expect(texts(root, '.dt-tl-label')).toEqual(['actions', 'navigation']);
+    const bars = [...root.querySelectorAll<HTMLElement>('.dt-tl-bar')];
+    expect(bars.map((bar) => bar.dataset.key)).toEqual(['a', 'b', 'c']);
+    expect(bars[1].classList.contains('dot')).toBe(true);
+    expect(bars[1].classList.contains('tone-warning')).toBe(true);
+    expect(bars[0].title).toBe('cart/add · info · 3.00 s');
+    expect(parseFloat(bars[2].style.left)).toBeGreaterThan(parseFloat(bars[0].style.left));
+    expect(texts(root, '.dt-tl-axis span').at(-1)).toBe('now');
+    bars[0].click();
+    await settle();
+    expect(panelOf(rendered).values.picked).toBe('a');
+    expect(root.querySelector<HTMLElement>('.dt-tl-bar[data-key="a"]')!.classList.contains('open')).toBe(true);
+  });
+
+  it('shows more of the past when a wider window is picked', async () => {
+    const { root } = await render(timeline);
+    expect(root.querySelectorAll('.dt-tl-bar')).toHaveLength(3);
+    [...root.querySelectorAll<HTMLButtonElement>('.dt-tl-window')].find((button) => text(button) === '5 min')!.click();
+    await settle();
+    expect(root.querySelectorAll('.dt-tl-bar')).toHaveLength(3);
+    expect(texts(root, '.dt-tl-axis span')[0]).toBe('−5 min');
   });
 });
 

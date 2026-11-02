@@ -7,7 +7,7 @@ describe('panel metadata', () => {
   it('keeps a well-formed panel and fills the defaults', () => {
     const parsed = parseExtension(wire([{ id: 'actions', title: 'Actions', layout: { type: 'json', source: 'rows' } }]));
     expect(parsed.panels).toEqual([
-      { id: 'actions', title: 'Actions', icon: DEFAULT_ICON, order: DEFAULT_ORDER, capabilities: { read: false, subscribe: false, write: false }, layout: { type: 'json', source: 'rows' }, routes: [], error: null },
+      { id: 'actions', title: 'Actions', icon: DEFAULT_ICON, order: DEFAULT_ORDER, capabilities: { read: false, subscribe: false, write: false }, layout: { type: 'json', source: 'rows' }, routes: [], lanes: [], error: null },
     ]);
   });
 
@@ -41,6 +41,14 @@ describe('panel metadata', () => {
       [{ type: 'stack', children: [{ type: 'split', primary: { type: 'stack', children: [7] }, secondary: { type: 'text' } }] }, 'invalid layout'],
     ];
     for (const [layout, error] of layouts) expect(parseExtension(wire([{ id: 'p', title: 'P', layout }])).panels[0].error, JSON.stringify(layout)).toBe(error);
+  });
+
+  it('keeps the lanes that name an event and fills their labels', () => {
+    const [panel] = parseExtension(wire([{ id: 'a', title: 'A', layout: { type: 'text' }, lanes: [{ id: 'changes', event: 'changed', tone: 'warning', itemTitle: 'what' }, { id: 'Bad Id', event: 'x' }, { id: 'noevent' }, { id: 'odd', event: 'y', tone: 'pink' }] }])).panels;
+    expect(panel.lanes).toEqual([
+      { id: 'changes', label: 'changes', event: 'changed', tone: 'warning', itemTitle: 'what' },
+      { id: 'odd', label: 'odd', event: 'y' },
+    ]);
   });
 
   it('keeps only the routes that are whole', () => {

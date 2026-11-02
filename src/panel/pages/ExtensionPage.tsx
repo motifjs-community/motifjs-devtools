@@ -60,6 +60,11 @@ export class ExtensionPage extends Component<HTMLElement> {
 
   notice = () => this.panel()?.notice ?? '';
 
+  dropped = () => {
+    const panel = this.panel();
+    return panel === null ? 0 : (this.model.state.extensions.find((item) => item.name === panel.name)?.dropped ?? 0);
+  };
+
   refresh() {
     const panel = this.panel();
     if (panel !== null) this.model.refresh(panel);
@@ -74,6 +79,9 @@ export class ExtensionPage extends Component<HTMLElement> {
             <h1>{() => this.panel()?.title ?? ''}</h1>
           </div>
           <div class="dt-page-actions">
+            <span class="dt-ext-dropped" title="Events the package sent faster than the bridge forwards (1000 a second); the panel did not see them" x-display={() => this.dropped() > 0}>
+              {() => `${this.dropped().toLocaleString('en-US')} events dropped`}
+            </span>
             <span class="dt-ext-writes" title="Commands of this panel change the app" x-display={() => this.panel()?.capabilities.write === true}>
               <span x-html={ICONS.pen}></span>
               changes the app

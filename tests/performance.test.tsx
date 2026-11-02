@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { Application } from '@motifx/core';
 import type { Client, ClientEvent, ClientStatus } from '../src/client/client';
 import { DevtoolsModel, type Counters } from '../src/panel/model/DevtoolsModel';
+import { LanesModel, type LaneDef } from '../src/panel/model/LanesModel';
 import { HISTORY, PerformanceModel, type TimelineEntry } from '../src/panel/model/PerformanceModel';
 import { StoresModel } from '../src/panel/model/StoresModel';
 import { PerformancePage } from '../src/panel/pages/PerformancePage';
@@ -267,7 +268,7 @@ describe('timeline drawing', () => {
 });
 
 describe('PerformancePage', () => {
-  async function render(memory?: unknown) {
+  async function render(memory?: unknown, laneDefs: LaneDef[] = []) {
     const fake = fakeClient(memory);
     const devtools = new DevtoolsModel(fake.client);
     devtools.state.status = { connected: true, version: 1 };
@@ -280,11 +281,28 @@ describe('PerformancePage', () => {
     builder.services.addSingleton(DevtoolsModel, { useValue: devtools });
     builder.services.addSingleton(PerformanceModel, { useValue: model });
     builder.services.addSingleton(StoresModel, { useValue: stores });
+    const lanes = new LanesModel(fake.client, () => laneDefs);
+    builder.services.addSingleton(LanesModel, { useValue: lanes });
     app = builder.build();
     app.run('#app', new PerformancePage());
     await settle();
-    return { ...fake, model };
+    return { ...fake, model, lanes };
   }
+
+  it('draws the lanes the packages declare under its own, from their events', async () => {
+    const { emit, lanes } = await render(undefined, [{ key: 'orders/changes', name: 'orders', label: 'Order changes', tone: 'warning', event: 'ext:orders:changed', itemTitle: 'what' }]);
+    expect([...document.querySelectorAll('.dt-tl-label')].map((e) => e.textContent!.trim())).toEqual(['Navigation', 'Reactivity', 'Build', 'Dispose', 'Order changes']);
+    // the model's clock stands at 100 000 in these tests
+    emit({ type: 'ext:orders:changed', payload: { what: 'added #1045' }, time: 99_000 });
+    await settle();
+    const lane = document.querySelector('.dt-tl-lane.ext')!;
+    expect(lane.querySelectorAll('.dt-tl-bar.dot')).toHaveLength(1);
+    expect(lane.querySelector<HTMLElement>('.dt-tl-bar')!.title).toBe('added #1045');
+    expect(lanes.state.entries).toHaveLength(1);
+    (document.querySelector('.dt-button.primary') as HTMLButtonElement).click();
+    await settle();
+    expect(lanes.state.entries).toHaveLength(0);
+  });
 
   const cards = () => [...document.querySelectorAll('.dt-card')].map((c) => [...c.children].map((e) => e.textContent!.trim()));
   const rows = () => [...document.querySelectorAll('.dt-perf-entry .dt-perf-row')].map((r) => [...r.children].map((e) => e.textContent!.trim()).filter(Boolean));

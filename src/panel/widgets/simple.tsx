@@ -2,8 +2,9 @@ import { reactive } from '@motifx/core';
 import { formatValue } from '../format';
 import { iconOf } from '../icons';
 import type { BadgeWidget, ButtonWidget, CodeWidget, CounterWidget, JsonWidget, TextWidget, Widget } from '../schema';
-import { PropNode, valueId, type ValueSource } from '../ValueTree';
-import { ReadingView, WidgetView, countOf, entriesOf, formatText, toneClass, type ViewClass } from './base';
+import { PropNode } from '../ValueTree';
+import { localTree } from '../ValueTreeSource';
+import { ReadingView, WidgetView, countOf, formatText, toneClass, type ViewClass } from './base';
 
 class TextView extends ReadingView<TextWidget> {
   override onConfigured() {
@@ -74,27 +75,14 @@ class BadgeView extends ReadingView<BadgeWidget> {
 }
 
 class JsonView extends ReadingView<JsonWidget> {
-  private readonly open = reactive({ keys: {} as Record<string, boolean> });
-
-  readonly tree: ValueSource = {
-    node: (keys) => {
-      if (!this.open.keys[valueId(keys)]) return undefined;
-      const value = keys.reduce<unknown>((current, key) => entriesOf(current).find((entry) => entry.key === key)?.value, this.value());
-      const entries = entriesOf(value);
-      return { entries, total: entries.length };
-    },
-    toggle: (keys) => {
-      const id = valueId(keys);
-      this.open.keys[id] = !this.open.keys[id];
-    },
-  };
+  readonly tree = localTree(() => this.value());
 
   override onConfigured() {
     this.class.add('dt-w');
     this.class.add('dt-w-json');
   }
 
-  entries = () => entriesOf(this.value());
+  entries = () => this.tree.entries();
 
   emptyText = () => {
     if (this.error() !== '') return this.error();

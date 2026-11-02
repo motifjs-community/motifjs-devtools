@@ -226,6 +226,25 @@ describe('ElementsPage', () => {
     expect(rowTexts(root)).toEqual(['<div>', 'AppShell<div>']);
   });
 
+  it('shows what each package says about the selected component as a value tree', async () => {
+    const before = INSPECTION.extensions;
+    (INSPECTION as { extensions: unknown }).extensions = { toasts: { visible: ['Hello'], shown: 2 }, sortable: 'no lists' };
+    try {
+      const { page, root } = await render();
+      page.model.select(page.model.rows[4]);
+      for (let i = 0; i < 4; i++) await tick();
+      page.model.setTab('extensions');
+      for (let i = 0; i < 4; i++) await tick();
+      const blocks = [...root.querySelectorAll('.dt-ext-block')];
+      expect(blocks.map((block) => block.querySelector('.dt-ext-block-name')?.textContent)).toEqual(['toasts', 'sortable']);
+      expect([...blocks[0].querySelectorAll('.dt-prop-key')].map((key) => key.textContent)).toEqual(['visible', 'shown']);
+      expect(blocks[1].querySelector('.dt-muted')?.textContent?.trim()).toBe('"no lists"');
+      expect(root.querySelector('.dt-pre')).toBeNull();
+    } finally {
+      (INSPECTION as { extensions: unknown }).extensions = before;
+    }
+  });
+
   it('inspects the selected component', async () => {
     const errors = vi.spyOn(console, 'error');
     const { page, root, calls } = await render();

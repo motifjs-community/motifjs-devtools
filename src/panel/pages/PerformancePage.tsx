@@ -1,6 +1,8 @@
 import { Component, FromService } from '@motifx/core';
 import { formatClock as clock, formatMs as ms } from '../format';
 import { DevtoolsModel } from '../model/DevtoolsModel';
+import { LanesModel } from '../model/LanesModel';
+import { laneColour, laneMarkup } from '../lanes';
 import {
   KINDS,
   kindLabel,
@@ -141,6 +143,10 @@ export class PerformancePage extends Component<HTMLElement> {
   devtools = FromService(DevtoolsModel)!;
   model = FromService(PerformanceModel)!;
   stores = FromService(StoresModel);
+  lanes = FromService(LanesModel);
+
+  laneDefs = () => this.lanes?.lanes() ?? [];
+  laneEntries = () => this.lanes?.state.entries ?? [];
 
   override onConfigured() {
     this.class.add('dt-profile');
@@ -211,7 +217,14 @@ export class PerformancePage extends Component<HTMLElement> {
             <button type="button" class="dt-button" onclick={() => m.togglePause()}>
               {() => pauseText(m.state.paused)}
             </button>
-            <button type="button" class="dt-button primary" onclick={() => m.clear()}>
+            <button
+              type="button"
+              class="dt-button primary"
+              onclick={() => {
+                m.clear();
+                this.lanes?.clear();
+              }}
+            >
               Clear recording
             </button>
           </div>
@@ -280,11 +293,23 @@ export class PerformancePage extends Component<HTMLElement> {
                   {kindLabel(kind)}
                 </span>
               ))}
+              {() =>
+                this.laneDefs().map((lane) => (
+                  <span key={lane.key} class="dt-tl-label ext" style={`--lane: ${laneColour(lane.tone)}`} title={`${lane.name}: ${lane.label}`}>
+                    {lane.label}
+                  </span>
+                ))
+              }
             </div>
             <div class="dt-tl-tracks" onmousedown={(e) => this.startDrag(e as MouseEvent)}>
               {KINDS.map((kind) => (
                 <div key={kind} class="dt-tl-lane" x-html={() => laneBars(m.state.entries, kind, m.state.now, m.state.window, m.state.expanded)}></div>
               ))}
+              {() =>
+                this.laneDefs().map((lane) => (
+                  <div key={lane.key} class="dt-tl-lane ext" style={`--lane: ${laneColour(lane.tone)}`} x-html={() => laneMarkup(this.laneEntries(), lane.key, m.state.now, m.state.window, null)}></div>
+                ))
+              }
               <div class="dt-tl-range" style={() => rangeStyle(m.state.selection, m.state.now, m.state.window)}></div>
             </div>
             <span></span>

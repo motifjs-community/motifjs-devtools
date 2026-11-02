@@ -3,6 +3,8 @@ import { formatPath } from '../format';
 import { DevtoolsModel } from '../model/DevtoolsModel';
 import { ElementsModel, documentCaption, type Row } from '../model/ElementsModel';
 import { PropNode, Value } from '../ValueTree';
+import { localTree } from '../ValueTreeSource';
+import { formatValue } from '../format';
 
 const visibilityGlyph = (visible: boolean | undefined) => (visible ? '◉' : '○');
 const activeText = (active: boolean | null) => (active === false ? 'inactive' : 'active');
@@ -16,6 +18,34 @@ const rowHeight = () => {
   const value = typeof getComputedStyle === 'function' ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dt-row')) : NaN;
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_ROW_HEIGHT;
 };
+
+type Block = { name: string };
+const blocks = new Map<string, Block>();
+const blockOf = (name: string) => {
+  let block = blocks.get(name);
+  if (block === undefined) blocks.set(name, (block = { name }));
+  return block;
+};
+
+/** What one package says about the selected component, as a value tree. */
+function ExtensionBlock(props: { block: Block; value: () => unknown }) {
+  const tree = localTree(props.value);
+  const leaf = () => {
+    const value = props.value();
+    return value === null || typeof value !== 'object' ? formatValue(value).text : 'Nothing to show';
+  };
+  return (
+    <section class="dt-ext-block">
+      <b class="dt-ext-block-name">{props.block.name}</b>
+      <div class="dt-muted dt-mono" x-display={() => tree.entries().length === 0}>
+        {() => leaf()}
+      </div>
+      {tree.entries().map((entry) => (
+        <PropNode key={`${entry.key}:${JSON.stringify(entry.value) ?? ''}`} name={entry.key} value={entry.value} keys={[entry.key]} source={tree} />
+      ))}
+    </section>
+  );
+}
 
 const FRAMEWORK_PROPS = new Set(['indexkey', 'runover', 'childs', 'initializeComponent', 'oninitializeComponent', 'key', 'ref', 'options', 'transition']);
 
@@ -69,6 +99,7 @@ class Inspector extends Component<HTMLElement> {
   override view() {
     const m = this.props.model;
     const data = () => m.state.inspection;
+    const extensionBlocks = () => Object.keys(data()?.extensions ?? {}).map(blockOf);
     const props = () => Object.entries(data()?.functionProps ?? data()?.props ?? {}).filter(([key]) => !FRAMEWORK_PROPS.has(key));
     const fields = () => Object.entries(data()?.fields ?? {});
     const classes = () => [...(data()?.classes.static ?? []), ...(data()?.classes.reactive ?? []).flatMap((r) => r.classes)];
@@ -238,8 +269,13 @@ class Inspector extends Component<HTMLElement> {
             </ul>
           </div>
 
-          <div class="dt-inspect-body" x-display={() => m.state.tab === 'extensions'}>
-            <pre class="dt-pre">{() => JSON.stringify(data()?.extensions ?? {}, null, 2)}</pre>
+          <div class="dt-inspect-body dt-ext-blocks" x-display={() => m.state.tab === 'extensions'}>
+            <div class="dt-empty small" x-display={() => extensionBlocks().length === 0}>
+              No package knows this component.
+            </div>
+            {extensionBlocks().map((block) => (
+              <ExtensionBlock key={block.name} block={block} value={() => data()?.extensions?.[block.name]} />
+            ))}
           </div>
         </div>
       </>

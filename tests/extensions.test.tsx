@@ -123,6 +123,35 @@ describe('extension panels', () => {
     expect(reads('rows')).toBe(before + 2);
   });
 
+  it('changes the rows it holds from the events of the package and counts what the bridge dropped', async () => {
+    const page: Page = {
+      extensions: {
+        feed: {
+          sources: { rows: { key: 'id', events: { 'row:added': 'append', 'row:changed': 'upsert', 'row:gone': 'remove' }, max: 3 } },
+          panels: [{ id: 'list', title: 'Feed', capabilities: { read: true, subscribe: true }, layout: { type: 'table', source: 'rows', key: 'id', columns: [{ field: 'id' }, { field: 'name' }] } }],
+          read: () => [{ id: 1, name: 'one' }, { id: 2, name: 'two' }],
+        },
+      },
+    };
+    const { root, emit, reads } = await render(page, 'ext:feed:list');
+    const cells = () => [...root.querySelectorAll('.dt-trow')].map((row) => [...row.querySelectorAll('.dt-tcell')].map(text).join(' '));
+    expect(cells()).toEqual(['1 one', '2 two']);
+    const before = reads('rows');
+    emit({ type: 'ext:feed:row:changed', payload: { id: 2, name: 'two again' } });
+    emit({ type: 'ext:feed:row:added', payload: { id: 3, name: 'three' } });
+    emit({ type: 'ext:feed:row:added', payload: { id: 4, name: 'four' } });
+    await settle();
+    expect(cells()).toEqual(['2 two again', '3 three', '4 four']);
+    emit({ type: 'ext:feed:row:gone', payload: { id: 3 } });
+    await settle();
+    expect(cells()).toEqual(['2 two again', '4 four']);
+    expect(reads('rows')).toBe(before);
+    emit({ type: 'devtools:ext-dropped', payload: { name: 'feed', count: 12 } });
+    emit({ type: 'devtools:ext-dropped', payload: { name: 'feed', count: 3 } });
+    await settle();
+    expect(model!.state.extensions.find((item) => item.name === 'feed')?.dropped).toBe(15);
+  });
+
   it('shows the problem of a broken panel and a placeholder for a widget it does not know', async () => {
     const page: Page = { extensions: { odd: { panels: [{ id: 'Bad Id', title: 'Bad', layout: { type: 'text' } }, { id: 'new', title: 'New', layout: { type: 'stack', children: [{ type: 'hologram' }] } }] } } };
     const { root, devtools } = await render(page, 'ext:odd:Bad Id');

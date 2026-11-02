@@ -57,6 +57,34 @@ export type DetailSection = string | { field: string; title?: string; view?: 'au
 
 export type DetailWidget = Common & Reads & { type: 'detail'; sections: DetailSection[]; actions?: ButtonWidget[]; empty?: string };
 
+/** Rows of a source as a stream of lines, newest first unless said otherwise. */
+export type LogWidget = Common & Reads & { type: 'log'; itemTime?: string; itemTitle: string; itemLevel?: string; levelTones?: Record<string, Tone>; filters?: RowFilter[]; newestFirst?: boolean; height?: number; empty?: string };
+
+export type TimelineLane = { id: string; label: string; tone?: Tone };
+
+/** Rows of a source in time: a bar when the row has a duration, a dot otherwise; lanes split them by a field. */
+export type TimelineWidget = Common & Reads & {
+  type: 'timeline';
+  itemTime: string;
+  itemDuration?: string;
+  itemTitle: string;
+  itemStatus?: string;
+  statusTones?: Record<string, Tone>;
+  itemLane?: string;
+  lanes?: TimelineLane[];
+  key?: string;
+  select?: string;
+  filters?: RowFilter[];
+  /** The span shown, in ms; 60 000 unless given. */
+  window?: number;
+  /** Keeps the right edge at the present and redraws every second; on unless given. */
+  live?: boolean;
+  empty?: string;
+};
+
+/** A lane of the Performance timeline fed by an event of the package: its time is the event's, the rest comes from the payload. */
+export type PerformanceLane = TimelineLane & { event: string; itemDuration?: string; itemTitle?: string };
+
 /** A small chart over the rows of a source: `series` names the fields drawn, `itemX` the field on the x axis (the index without it). */
 export type ChartWidget = Common & Reads & { type: 'chart'; kind?: 'line' | 'bar' | 'spark'; itemX?: string; series?: string | string[]; tone?: Tone; format?: Format; window?: number | { seconds: number }; height?: number; label?: string };
 
@@ -75,7 +103,9 @@ export type Widget =
   | TableWidget
   | TreeWidget
   | DetailWidget
-  | ChartWidget;
+  | ChartWidget
+  | LogWidget
+  | TimelineWidget;
 
 export type PanelCapabilities = { read?: boolean; subscribe?: boolean; write?: boolean };
 
@@ -89,4 +119,6 @@ export type PanelMetadata = {
   capabilities?: PanelCapabilities;
   layout: Widget;
   routes?: PanelRoute[];
+  /** Lanes this package adds to the Performance timeline. */
+  lanes?: PerformanceLane[];
 };

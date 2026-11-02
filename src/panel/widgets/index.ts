@@ -5,13 +5,15 @@ import { chartViews } from './chart';
 import { detailViews } from './detail';
 import { filterViews } from './filter';
 import { layoutViews } from './layout';
+import { logViews } from './log';
 import { UnknownView, simpleViews } from './simple';
 import { tableViews } from './table';
+import { timelineViews } from './timeline';
 import { treeViews } from './tree';
 
 // The views are named here, not registered on load: the package is marked side-effect free, and a production
 // build keeps only what a used binding reaches. Containers build their children through scope.build.
-const VIEWS: Record<string, ViewClass> = { ...simpleViews, ...layoutViews, ...filterViews, ...tableViews, ...treeViews, ...detailViews, ...chartViews };
+const VIEWS: Record<string, ViewClass> = { ...simpleViews, ...layoutViews, ...filterViews, ...tableViews, ...treeViews, ...detailViews, ...chartViews, ...logViews, ...timelineViews };
 
 export const knownWidgets = () => Object.keys(VIEWS);
 

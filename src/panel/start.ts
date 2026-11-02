@@ -9,6 +9,7 @@ import { ServicesModel } from './model/ServicesModel';
 import { HomeModel } from './model/HomeModel';
 import { PerformanceModel } from './model/PerformanceModel';
 import { ExtensionsModel } from './model/ExtensionsModel';
+import { LanesModel } from './model/LanesModel';
 import { Shell } from './Shell';
 import './styles/panel.css';
 import './styles/elements.css';
@@ -35,6 +36,11 @@ export function startPanel(port: Port, options: PanelOptions = {}) {
   const performance = new PerformanceModel(client, () => model.state.counters, undefined, undefined, shown);
   const home = new HomeModel(client, () => model.state.section === 'home', undefined, shown);
   const extensions = new ExtensionsModel(client, () => model.state.section, undefined, shown);
+  const lanes = new LanesModel(client, () =>
+    extensions.state.panels.flatMap((panel) =>
+      panel.lanes.map((lane) => ({ key: `${panel.name}/${lane.id}`, name: panel.name, label: lane.label, tone: lane.tone, event: `ext:${panel.name}:${lane.event}`, itemDuration: lane.itemDuration, itemTitle: lane.itemTitle })),
+    ),
+  );
 
   effect(() => {
     if (!model.state.shown) return;
@@ -73,6 +79,7 @@ export function startPanel(port: Port, options: PanelOptions = {}) {
   builder.services.addSingleton(HomeModel, { useValue: home });
   builder.services.addSingleton(PerformanceModel, { useValue: performance });
   builder.services.addSingleton(ExtensionsModel, { useValue: extensions });
+  builder.services.addSingleton(LanesModel, { useValue: lanes });
   builder.build().run('#app', new Shell());
   return client;
 }

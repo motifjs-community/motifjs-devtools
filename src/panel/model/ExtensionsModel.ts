@@ -2,8 +2,9 @@ import { reactive } from '@motifx/core';
 import type { ContractResult, ExtensionPanels, ExtensionSourceSettings } from '../../bridge/protocol';
 import { MARK } from '../../bridge/serialize';
 import type { Client, ClientEvent } from '../../client/client';
-import type { ButtonWidget, Params, PanelRoute, Widget } from '../schema';
+import type { ButtonWidget, Params, PanelRoute, PerformanceLane, Widget } from '../schema';
 import { DESCRIBE_SOURCE, describePanel, parseExtension, type ParsedPanel } from './panels';
+import { changeRows, trimRows, type RowAction } from './rows';
 import { READ_GAP, Reader } from './reader';
 
 export type SourceStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -20,6 +21,7 @@ export type PanelRecord = {
   capabilities: { read: boolean; subscribe: boolean; write: boolean };
   layout: Widget | null;
   routes: PanelRoute[];
+  lanes: PerformanceLane[];
   error: string | null;
   /** The panel's own state: selections and filters the widgets write and read. Kept while the panel exists. */
   values: Record<string, unknown>;
@@ -30,7 +32,15 @@ export type PanelRecord = {
   version: number;
 };
 
-export type ExtensionRecord = { name: string; panels: PanelRecord[]; sources: Record<string, ExtensionSourceSettings>; commands: string[]; error: string | null };
+export type ExtensionRecord = {
+  name: string;
+  panels: PanelRecord[];
+  sources: Record<string, ExtensionSourceSettings>;
+  commands: string[];
+  error: string | null;
+  /** Events of the package the bridge dropped because they came faster than the limit. */
+  dropped: number;
+};
 
 export const panelKey = (name: string, id: string) => `ext:${name}:${id}`;
 export const isPanelSection = (section: string) => section.startsWith('ext:');
@@ -186,7 +196,8 @@ export class ExtensionsModel {
 
   private record(name: string, parsed: ReturnType<typeof parseExtension>, error: string | null): ExtensionRecord {
     const panels = parsed.panels.length > 0 ? parsed.panels : [describePanel(name)];
-    return { name, panels: panels.map((panel) => this.panelRecord(name, panel)), sources: parsed.sources, commands: parsed.commands, error };
+    const dropped = this.state.extensions.find((item) => item.name === name)?.dropped ?? 0;
+    return { name, panels: panels.map((panel) => this.panelRecord(name, panel)), sources: parsed.sources, commands: parsed.commands, error, dropped };
   }
 
   private panelRecord(name: string, panel: ParsedPanel): PanelRecord {
@@ -200,6 +211,7 @@ export class ExtensionsModel {
       capabilities: panel.capabilities,
       layout: panel.layout,
       routes: panel.routes,
+      lanes: panel.lanes,
       error: panel.error,
       values: {},
       entries: [],
@@ -221,6 +233,7 @@ export class ExtensionsModel {
           kept.routes = next.routes;
           kept.version++;
         }
+        kept.lanes = next.lanes;
         kept.title = next.title;
         kept.icon = next.icon;
         kept.order = next.order;
@@ -273,6 +286,7 @@ export class ExtensionsModel {
           : await this.client.request<ContractResult>('readExtensionSource', panel.name, panel.id, entry.source, plain(entry.params));
       if (ticket !== entry.ticket) return;
       if (result.ok) {
+        if (Array.isArray(result.value)) trimRows(result.value, this.settingsOf(panel.name, entry.source));
         entry.value = result.value;
         entry.error = null;
         entry.status = 'ready';
@@ -297,17 +311,26 @@ export class ExtensionsModel {
       for (const panel of this.state.panels) this.invalidate(panel.name, DESCRIBE_SOURCE);
       return;
     }
+    if (event.type === 'devtools:ext-dropped') {
+      const payload = (event.payload ?? {}) as { name?: unknown; count?: unknown };
+      const record = this.state.extensions.find((item) => item.name === payload.name);
+      if (record !== undefined && typeof payload.count === 'number') record.dropped += payload.count;
+      return;
+    }
     if (event.type === 'extension:changed') {
       const payload = (event.payload ?? {}) as { name?: unknown; source?: unknown };
       if (typeof payload.name === 'string' && typeof payload.source === 'string') this.invalidate(payload.name, payload.source);
       else void this.reader.request();
       return;
     }
-    if (event.type.startsWith('ext:')) this.onPackageEvent(event.type.slice(4));
+    if (event.type.startsWith('ext:')) this.onPackageEvent(event.type.slice(4), event.payload);
   }
 
-  /** `ext:<name>:<type>`: every source whose `events` names the type is read again, and what describe() gives. */
-  private onPackageEvent(rest: string) {
+  /**
+   * `ext:<name>:<type>`: a source whose `events` names the type is read again (`refresh`) or changed in place from
+   * the payload (`upsert`, `append`, `remove`); what describe() gives is read again either way.
+   */
+  private onPackageEvent(rest: string, payload: unknown) {
     const at = rest.indexOf(':');
     if (at <= 0) return;
     const name = rest.slice(0, at);
@@ -315,8 +338,30 @@ export class ExtensionsModel {
     const record = this.state.extensions.find((item) => item.name === name);
     if (record === undefined) return;
     for (const [source, settings] of Object.entries(record.sources)) {
-      if (settings.events?.[type] !== undefined) this.invalidate(name, source);
+      const action = settings.events?.[type];
+      if (action === undefined) continue;
+      if (action === 'refresh') this.invalidate(name, source);
+      else this.changeRows(name, source, settings, action, payload);
     }
     this.invalidate(name, DESCRIBE_SOURCE);
+  }
+
+  /** The rows a panel holds of the source follow the event; a read that is not there yet is simply made again. */
+  private changeRows(name: string, source: string, settings: ExtensionSourceSettings, action: RowAction, payload: unknown) {
+    for (const panel of this.state.panels) {
+      if (panel.name !== name) continue;
+      for (const entry of panel.entries) {
+        if (entry.source !== source) continue;
+        if (entry.status === 'ready' && Array.isArray(entry.value)) changeRows(entry.value, settings, action, payload);
+        else {
+          entry.stale = true;
+          void this.readers.get(panel.key)?.request();
+        }
+      }
+    }
+  }
+
+  private settingsOf(name: string, source: string): ExtensionSourceSettings {
+    return this.state.extensions.find((item) => item.name === name)?.sources[source] ?? {};
   }
 }
