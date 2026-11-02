@@ -48,8 +48,10 @@ is open and connected; `emit` costs nothing while devtools is off.
 - **`sources`**: what the panel reads. `read(params)` returns anything JSON can carry (the bridge copies it; a
   value JSON cannot carry is marked). `key` names the field that identifies a row. `events` maps an event type of
   the package to what it does to the rows the panel holds: `upsert` puts the payload in place of the row with the
-  same key or adds it, `append` adds it, `remove` takes the row with the payload's key out, `refresh` reads the
-  source again. `max` bounds the rows kept, newest last (5000 unless given, 50 000 at most).
+  same key or adds it, `append` adds it, `remove` takes the row with the payload's key out (the payload may be the
+  bare key), `refresh` reads the source again. Events change rows only while the source's value is a top-level
+  array; a source that returns an object is read again instead. `max` bounds the rows kept, newest last (5000
+  unless given, 50 000 at most).
 - **`commands`**: `(args) => unknown`, run from a panel with `write`. A thrown error becomes the notice under the
   panel's title. A returned promise is awaited.
 - **`panels`**: a list of `PanelMetadata`, or a function that returns one. Up to 8.
@@ -107,21 +109,22 @@ rest of the layout stays.
 | `tabs` | tabs over widgets | `tabs: [{ title, layout }]`, `state` (the open tab, by index or title) |
 | `text` | a value, or fixed text | `text` or `source` + `field`, `format`, `tone`, `empty` |
 | `counter` | a number with a label: a count for lists and collections, the number itself otherwise | `source`, `field`, `label`, `format`, `tone` |
-| `badge` | a short label; `tones` picks the tone by the text shown | `text` or `source` + `field`, `tone`, `tones` |
+| `badge` | a short label; `tones` picks the tone by the text shown | `text` or `source` + `field`, `format`, `tone`, `tones` |
 | `json` | a value tree, opened one level at a time | `source`, `field`, `empty` |
 | `code` | monospace text with line numbers and a copy button | `text` or `source` + `field`, `language` (`text`, `json`), `empty` |
 | `button` | runs a command, or goes to a route | `label`, `icon`, `tone`, `command`, `args`, `confirm`, `refresh` (sources to read again after), `navigate: { route, params }` |
-| `filter` | writes what the user types or picks into the state | `kind` (`search`, `select`, `toggle`), `state`, `label`, `placeholder`, `options` (a list, or `{ source, itemValue, itemLabel }`) |
+| `filter` | writes what the user types or picks into the state | `kind` (`search`, `select`, `toggle`), `state`, `label`, `placeholder`, `options` (a list, or `{ source, params, itemValue, itemLabel }`) |
 | `table` | rows and columns, sorted by a header, one selected row | `key`, `columns: [{ field, title, format, width, align }]`, `select`, `open`, `filters`, `sort: { field, dir }`, `height`, `empty` |
 | `tree` | nested rows opened a level at a time; a filter flattens them to what matches | `key`, `itemTitle`, `itemChildren`, `itemBadge`, `select`, `open`, `filters`, `height`, `empty` |
 | `detail` | the sections of one record, each shown by what its value is | `sections`, `actions` (buttons), `empty` |
 | `log` | lines in time, newest first | `itemTime`, `itemTitle`, `itemLevel`, `levelTones`, `open`, `filters`, `newestFirst`, `height`, `empty` |
-| `timeline` | rows in time, in lanes; a bar when the row has a duration, a dot otherwise | `itemTime`, `itemDuration`, `itemTitle`, `itemStatus`, `statusTones`, `itemLane`, `lanes`, `key`, `select`, `open`, `filters`, `window` (ms), `live`, `empty` |
+| `timeline` | rows in time, in lanes; a bar when the row has a duration, a dot otherwise | `itemTime`, `itemDuration`, `itemTitle`, `itemStatus`, `statusTones`, `itemLane`, `lanes`, `key`, `select`, `open`, `filters`, `window` (ms, 60 000 unless given), `live` (on unless given), `empty` |
 | `chart` | a small chart over the rows of a source | `kind` (`line`, `bar`, `spark`), `itemX`, `series`, `tone`, `format`, `window` (last N rows or `{ seconds }`), `height`, `label` |
 
 **`detail` sections**: a string names a field of the record; its view follows the value (an object → its fields,
 a list of objects → a table, text with line breaks → code, anything else → the value). The long form
-`{ field, title, view, columns, format }` chooses the view (`fields`, `table`, `code`, `json`, `value`). A section
+`{ field, title, view, columns, format }` chooses the view (`fields`, `table`, `code`, `json`, `value`; `auto` is
+the choice by value). A section
 whose value is missing or empty is left out.
 
 **Filters**: `filters: [{ field, state }]` narrow the rows in the panel: text written by a `search` filter is
@@ -136,7 +139,7 @@ package: no CSS, no HTML, no images. The panel's light and dark themes apply.
 ## Routes
 
 A route is a view inside the panel, with its own layout, opened over the panel's layout. The title bar then shows
-the way back (`Actions › cart/add`) and a back button.
+the way back (`Actions › cart/add`) and a back button. Route ids follow the rule of panel ids.
 
 ```ts
 routes: [{
@@ -178,6 +181,7 @@ lanes: [{ id: 'actions', label: 'Actions', tone: 'accent', event: 'action:end', 
 ```
 
 The item's time is the event's; `itemDuration` (ms) makes it a bar that ends at that time, `itemTitle` names it.
+Lane ids follow the rule of panel ids.
 
 ## Limits
 
