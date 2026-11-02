@@ -2,7 +2,7 @@
 
 `motifjs-devtools` is a developer tools panel for **MotifJS** (`@motifx/core`), the fine-grained reactive UI framework without a virtual DOM.
 
-> **Status:** early release. It needs `@motifx/core` 1.2.0-rc.6 or later (devtools contract version 1); windows, the page layer and the documents of the app need a core with contract version 2.
+> **Status:** early release. It needs `@motifx/core` 1.2.0-rc.6 or later (devtools contract version 1); windows, the page layer and the documents of the app need a core with contract version 2; the panels of packages need a core whose contract has `readExtensionPanels` (1.2.0-rc.24 or later).
 > Try it in the browser: [live example](https://motifjs-community.github.io/motifjs-devtools/).
 
 ![The panel docked under a MotifJS app, inspecting a row of the orders table](https://raw.githubusercontent.com/motifjs-community/motifjs-devtools/main/.github/assets/screenshots/hero.png)
@@ -69,7 +69,8 @@
   in the sidebar drawn from plain metadata (tables, trees, timelines, logs, charts, a detail with its actions,
   filters, tabs and splits), sources the panel reads, commands it runs, events that change rows as they happen,
   views inside the panel, lanes on the Performance timeline, and a way to point the user at something. What a
-  package sends is data, never code. See [docs/extensions.md](docs/extensions.md).
+  package sends is data, never code. See [docs/extensions.md](docs/extensions.md); for AI agents the same text is
+  the `motifjs-devtools` skill in [motifjs-community/skills](https://github.com/motifjs-community/skills).
 
 Light and dark themes follow the system, or are chosen in the header.
 

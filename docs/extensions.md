@@ -7,7 +7,11 @@ and nothing of the package runs in the panel: the package gives data, the panel 
 the in-page panel and in the browser extension.
 
 This page is for package authors. It describes what `registerDevtools` takes (a core with contract version 2 and
-the extension methods; `@motifx/core` 1.2.0-rc.24 or later), what the panel does with it, and the limits.
+the extension methods; `@motifx/core` 1.2.0-rc.24 or later), what the panel does with it, and the limits. The
+contract itself, the handle `registerDevtools` returns, the events, the operations and the write records, belongs
+to the core: its devtools page and the typings of `@motifx/core/devtools` describe it; this page describes only
+what the panel does with what a package gives. The same text is carried for AI agents by the `motifjs-devtools`
+skill in [motifjs-community/skills](https://github.com/motifjs-community/skills); it ships in the npm package too.
 
 ## Registering
 
