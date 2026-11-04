@@ -1,6 +1,6 @@
 {
   "name": "@motifx-community/devtools",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Developer tools for inspecting MotifJS (@motifx/core) apps",
   "keywords": [
     "motifjs",
@@ -51,8 +51,8 @@
     "@motifx/core": "^1.2.0-rc.6"
   },
   "devDependencies": {
-    "@motifx/compiler": "1.2.0-rc.23",
-    "@motifx/core": "1.2.0-rc.23",
+    "@motifx/compiler": "1.2.0-rc.24",
+    "@motifx/core": "1.2.0-rc.24",
     "@types/node": "^24.19.1",
     "jsdom": "^30.1.2",
     "typescript": "^7.0.2",

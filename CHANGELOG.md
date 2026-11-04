@@ -4,7 +4,7 @@ All notable changes to this package are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.5.0] - 2026-11-04
 
 ### Added
 
@@ -19,6 +19,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Highlight updates: a header button that outlines in the page every element a reactivity flush changed, with a
   count and a warmer color for elements updated again less than a second after their last update. It is off by
   default and remembered by the panel. The `flashUpdates` page method turns it on and off.
+
+### Fixed
+
+- The 128 px toolbar icon of the idle state was a damaged PNG, so Chrome refused to install the extension from the
+  store ("Could not decode image: 'idle-128.png'").
 
 ## [0.4.0] - 2026-10-29
 
