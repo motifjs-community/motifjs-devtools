@@ -1,6 +1,6 @@
 {
   "name": "@motifx-community/devtools",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Developer tools for inspecting MotifJS (@motifx/core) apps",
   "keywords": [
     "motifjs",
