@@ -48,7 +48,7 @@ export type Inspection = Omit<TreeNode, 'children'> & {
   events: { name: string; type?: string; dom: boolean; handler?: unknown; modifiers?: string[] }[];
   hooks: { name: string; method: boolean; handlers: number }[];
   classes: { static: string[]; reactive: { id: string; classes: string[] }[] };
-  attributes: { name?: string; key?: string; [key: string]: unknown }[];
+  attributes: { name?: string; key?: string; value?: unknown; reactive?: boolean; held?: boolean; heldValue?: unknown; [key: string]: unknown }[];
   services: { scope: { kind: string; name: string | null } | null; requested: string[] } | null;
   effects: { kind: string; runs: number; lastDuration: number; lastTrigger: unknown; deps: unknown[] }[];
   extensions: Record<string, unknown>;

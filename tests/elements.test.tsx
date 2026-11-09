@@ -43,7 +43,7 @@ const INSPECTION = {
   events: [{ name: 'click', dom: true, handler: { kind: 'function', name: 'onClick' } }],
   hooks: [{ name: 'onBuilt', method: true, handlers: 1 }],
   classes: { static: ['card'], reactive: [{ id: '1', classes: ['positive'] }] },
-  attributes: [{ name: 'title' }],
+  attributes: [{ name: 'title' }, { name: 'disabled', value: false, reactive: true, held: true, heldValue: true }, { name: 'tabindex', reactive: false, held: true, heldValue: -1 }],
   services: { scope: { kind: 'root', name: null }, requested: ['Api'] },
   effects: [{ kind: 'class', runs: 3, lastDuration: 0.12, lastTrigger: null, deps: [] }],
   extensions: {},
@@ -261,6 +261,17 @@ describe('ElementsPage', () => {
     expect(inspector.querySelectorAll('.dt-list')[0].querySelectorAll('li')).toHaveLength(3);
     expect(errors).not.toHaveBeenCalled();
     errors.mockRestore();
+  });
+
+  it('marks the attributes that a value is held over and tells both values', async () => {
+    const { page, root } = await render();
+    page.model.select(page.model.rows[4]);
+    for (let i = 0; i < 4; i++) await tick();
+    const items = [...root.querySelectorAll('.dt-attributes li')];
+    expect(items.map((item) => item.querySelector('span')?.textContent)).toEqual(['title', 'disabled', 'tabindex']);
+    expect(items.map((item) => item.querySelector('.dt-pill')?.textContent ?? null)).toEqual([null, 'held', 'held']);
+    expect(items[1].querySelector('.dt-pill')?.getAttribute('title')).toBe("A value is held over this attribute: the element shows true, the component's own value is false.");
+    expect(items[2].querySelector('.dt-pill')?.getAttribute('title')).toBe('A value is held over this attribute: the element shows -1, the component has no value of its own.');
   });
 
   it('sends a plain path that postMessage can copy when a row is hovered', async () => {

@@ -1,7 +1,7 @@
 import { Component, FromService, Virtualization } from '@motifx/core';
 import { formatPath } from '../format';
 import { DevtoolsModel } from '../model/DevtoolsModel';
-import { ElementsModel, documentCaption, type Row } from '../model/ElementsModel';
+import { ElementsModel, documentCaption, type Inspection, type Row } from '../model/ElementsModel';
 import { PropNode, Value } from '../ValueTree';
 import { localTree } from '../ValueTreeSource';
 import { formatValue } from '../format';
@@ -9,6 +9,10 @@ import { formatValue } from '../format';
 const visibilityGlyph = (visible: boolean | undefined) => (visible ? '◉' : '○');
 const activeText = (active: boolean | null) => (active === false ? 'inactive' : 'active');
 const eventKind = (dom: boolean) => (dom ? 'dom' : 'component');
+const heldTitle = (attribute: Inspection['attributes'][number]) => {
+  const own = attribute.value === undefined ? 'the component has no value of its own' : `the component's own value is ${formatValue(attribute.value).text}`;
+  return `A value is held over this attribute: the element shows ${formatValue(attribute.heldValue).text}, ${own}.`;
+};
 
 const isGetter = (value: unknown) => typeof value === 'object' && value !== null && (value as { kind?: unknown }).kind === 'getter';
 
@@ -207,10 +211,11 @@ class Inspector extends Component<HTMLElement> {
             </details>
             <details>
               <Section title="Attributes" count={() => data()?.attributes.length ?? 0} />
-              <ul class="dt-list">
+              <ul class="dt-list dt-attributes">
                 {(data()?.attributes ?? []).map((attribute, index) => (
                   <li key={index}>
                     <span>{String(attribute.name ?? attribute.key ?? '')}</span>
+                    <span class="dt-pill" x-display={() => attribute.held === true} title={heldTitle(attribute)}>held</span>
                   </li>
                 ))}
               </ul>

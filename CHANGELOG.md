@@ -4,6 +4,14 @@ All notable changes to this package are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Elements: an attribute that a value is held over with the core's `attr.hold` is marked `held` in the Attributes
+  list. The mark's tooltip gives the value the element shows and the component's own value. It needs a core whose
+  `inspect()` reports held attributes.
+
 ## [0.5.0] - 2026-11-04
 
 ### Added
